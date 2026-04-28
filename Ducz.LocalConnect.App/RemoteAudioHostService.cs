@@ -25,7 +25,7 @@ internal sealed class RemoteAudioHostService
         _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
         _acceptLoopTask = AcceptLoopAsync(_lifetimeCancellation.Token);
-        StatusChanged?.Invoke($"aguardando cliente na porta {port}");
+        StatusChanged?.Invoke($"Waiting for an audio client on port {port}");
     }
 
     public async Task StopAsync()
@@ -81,7 +81,7 @@ internal sealed class RemoteAudioHostService
         }
         catch (Exception exception)
         {
-            StatusChanged?.Invoke($"erro no serviço de áudio: {exception.Message}");
+            StatusChanged?.Invoke($"Audio service error: {exception.Message}");
         }
     }
 
@@ -113,7 +113,7 @@ internal sealed class RemoteAudioHostService
             }
         };
 
-        StatusChanged?.Invoke($"cliente conectado: {networkClient.Client.RemoteEndPoint}");
+        StatusChanged?.Invoke($"Client connected: {networkClient.Client.RemoteEndPoint}");
         await RemoteAudioProtocol.WriteWaveFormatAsync(stream, capture.WaveFormat, connectionToken);
         capture.StartRecording();
 
@@ -132,7 +132,7 @@ internal sealed class RemoteAudioHostService
             capture.StopRecording();
             if (!cancellationToken.IsCancellationRequested)
             {
-                StatusChanged?.Invoke("cliente desconectado");
+                StatusChanged?.Invoke("Client disconnected");
             }
         }
     }

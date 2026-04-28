@@ -82,7 +82,7 @@ internal static class NativeInput
         var sent = SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
         if (sent == 0)
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "O Windows rejeitou o evento de mouse remoto.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Windows rejected the remote mouse event.");
         }
     }
 
@@ -105,7 +105,7 @@ internal static class NativeInput
         var sent = SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
         if (sent == 0)
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "O Windows rejeitou o evento de teclado remoto.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Windows rejected the remote keyboard event.");
         }
     }
 
@@ -113,7 +113,7 @@ internal static class NativeInput
     {
         if (!SetCursorPos(x, y))
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "O Windows rejeitou a movimentação do cursor remoto.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Windows rejected the remote cursor movement.");
         }
     }
 

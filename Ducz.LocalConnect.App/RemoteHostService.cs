@@ -6,7 +6,7 @@ namespace Ducz.LocalConnect.App;
 
 internal sealed class RemoteHostService
 {
-    private const int FrameIntervalMilliseconds = 60;
+    private const int FrameIntervalMilliseconds = 33;
     private const int AudioPortOffset = 1;
 
     private readonly RemoteAudioHostService _audioService = new();
@@ -21,7 +21,7 @@ internal sealed class RemoteHostService
 
     public event Action<string>? StatusChanged;
 
-    public void Start(int port, string accessPin)
+    public void Start(int port, string accessPin, string? screenDeviceName)
     {
         if (_listener is not null)
         {
@@ -29,12 +29,13 @@ internal sealed class RemoteHostService
         }
 
         _accessPin = string.IsNullOrWhiteSpace(accessPin) ? "123456" : accessPin.Trim();
+        _screenDiffEncoder.SetScreen(screenDeviceName);
         _lifetimeCancellation = new CancellationTokenSource();
         _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
         _audioService.StatusChanged += HandleAudioStatusChanged;
         _audioService.Start(port + AudioPortOffset);
-        StatusChanged?.Invoke($"aguardando cliente nas portas {port} e {port + AudioPortOffset}.");
+        StatusChanged?.Invoke($"Waiting for a client on ports {port} and {port + AudioPortOffset}.");
         _acceptLoopTask = AcceptLoopAsync(_lifetimeCancellation.Token);
     }
 
@@ -72,7 +73,7 @@ internal sealed class RemoteHostService
         {
             _audioService.StatusChanged -= HandleAudioStatusChanged;
             lifetimeCancellation?.Dispose();
-            StatusChanged?.Invoke("host parado.");
+            StatusChanged?.Invoke("Host stopped.");
         }
     }
 
@@ -95,7 +96,7 @@ internal sealed class RemoteHostService
         }
         catch (Exception exception)
         {
-            StatusChanged?.Invoke($"erro no host: {exception.Message}");
+            StatusChanged?.Invoke($"Host error: {exception.Message}");
         }
     }
 
@@ -112,7 +113,7 @@ internal sealed class RemoteHostService
             return;
         }
 
-        StatusChanged?.Invoke($"cliente autenticado: {networkClient.Client.RemoteEndPoint}");
+        StatusChanged?.Invoke($"Client authenticated: {networkClient.Client.RemoteEndPoint}");
 
         var sendFramesTask = SendFramesLoopAsync(stream, connectionToken);
         var receivePacketsTask = ReceiveClientPacketsLoopAsync(stream, connectionToken);
@@ -129,12 +130,12 @@ internal sealed class RemoteHostService
         }
         catch (Exception exception)
         {
-            StatusChanged?.Invoke($"conexão encerrada com erro: {exception.Message}");
+            StatusChanged?.Invoke($"Connection closed with an error: {exception.Message}");
         }
 
         if (!cancellationToken.IsCancellationRequested)
         {
-            StatusChanged?.Invoke("cliente desconectado. aguardando nova conexão.");
+            StatusChanged?.Invoke("Client disconnected. Waiting for a new connection.");
         }
     }
 
@@ -143,12 +144,12 @@ internal sealed class RemoteHostService
         var packet = await RemoteProtocol.ReadClientPacketAsync(stream, cancellationToken);
         if (packet is not AuthRequestClientPacket authPacket)
         {
-            await RemoteProtocol.WriteAuthResultAsync(stream, success: false, "Handshake inválido.", cancellationToken);
+            await RemoteProtocol.WriteAuthResultAsync(stream, success: false, "Invalid handshake.", cancellationToken);
             return false;
         }
 
         var valid = string.Equals(authPacket.Pin, _accessPin, StringComparison.Ordinal);
-        await RemoteProtocol.WriteAuthResultAsync(stream, valid, valid ? "Autenticado." : "PIN inválido.", cancellationToken);
+        await RemoteProtocol.WriteAuthResultAsync(stream, valid, valid ? "Authenticated." : "Invalid PIN.", cancellationToken);
         return valid;
     }
 
@@ -185,7 +186,7 @@ internal sealed class RemoteHostService
                         break;
                     case ClipboardSetClientPacket clipboardPacket:
                         WindowsClipboard.SetText(clipboardPacket.Text);
-                        StatusChanged?.Invoke("clipboard atualizado pelo cliente.");
+                        StatusChanged?.Invoke("Clipboard updated by the client.");
                         break;
                     case ClipboardRequestClientPacket:
                         await RemoteProtocol.WriteClipboardResponseAsync(stream, WindowsClipboard.GetText(), cancellationToken);
@@ -198,7 +199,7 @@ internal sealed class RemoteHostService
                         currentFileName = fileMetadataPacket.FileName;
                         expectedBytes = fileMetadataPacket.FileSize;
                         receivedBytes = 0;
-                        StatusChanged?.Invoke($"recebendo arquivo: {currentFileName}");
+                        StatusChanged?.Invoke($"Receiving file: {currentFileName}");
                         break;
                     case FileChunkClientPacket fileChunkPacket when fileStream is not null:
                         await fileStream.WriteAsync(fileChunkPacket.Content, cancellationToken);
@@ -208,7 +209,7 @@ internal sealed class RemoteHostService
                             await fileStream.FlushAsync(cancellationToken);
                             fileStream.Dispose();
                             fileStream = null;
-                            StatusChanged?.Invoke($"arquivo recebido: {currentFileName}");
+                            StatusChanged?.Invoke($"File received: {currentFileName}");
                         }
                         break;
                 }
@@ -228,18 +229,18 @@ internal sealed class RemoteHostService
         }
         catch (Win32Exception exception)
         {
-            StatusChanged?.Invoke($"falha ao aplicar entrada remota: {exception.Message}");
+            StatusChanged?.Invoke($"Failed to apply remote input: {exception.Message}");
         }
     }
 
     private static string BuildIncomingFilePath(string fileName)
     {
-        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Ducz LocalConnect Recebidos");
+        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Ducz LocalConnect Received Files");
         return Path.Combine(directory, Path.GetFileName(fileName));
     }
 
     private void HandleAudioStatusChanged(string message)
     {
-        StatusChanged?.Invoke($"áudio: {message}");
+        StatusChanged?.Invoke($"Audio: {message}");
     }
 }

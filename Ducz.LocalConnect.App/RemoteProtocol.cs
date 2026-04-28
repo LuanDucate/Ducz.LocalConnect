@@ -167,7 +167,7 @@ internal static class RemoteProtocol
             PacketType.ClipboardRequest => new ClipboardRequestClientPacket(),
             PacketType.FileMetadata => await ReadFileMetadataAsync(stream, cancellationToken),
             PacketType.FileChunk => new FileChunkClientPacket(await ReadBufferAsync(stream, cancellationToken)),
-            _ => throw new InvalidDataException($"Pacote do cliente desconhecido: {packetType}.")
+            _ => throw new InvalidDataException($"Unknown client packet: {packetType}.")
         };
     }
 
@@ -289,7 +289,7 @@ internal static class RemoteProtocol
             var currentRead = await stream.ReadAsync(buffer.AsMemory(read, length - read), cancellationToken);
             if (currentRead == 0)
             {
-                throw new EndOfStreamException("A conexão foi encerrada.");
+                throw new EndOfStreamException("The connection was closed.");
             }
 
             read += currentRead;

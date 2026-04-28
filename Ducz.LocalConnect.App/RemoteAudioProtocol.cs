@@ -57,7 +57,7 @@ internal static class RemoteAudioProtocol
             var currentRead = await stream.ReadAsync(buffer.AsMemory(read, length - read), cancellationToken);
             if (currentRead == 0)
             {
-                throw new EndOfStreamException("A conexão de áudio foi encerrada.");
+                throw new EndOfStreamException("The audio connection was closed.");
             }
 
             read += currentRead;

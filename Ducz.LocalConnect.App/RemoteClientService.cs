@@ -30,7 +30,7 @@ internal sealed class RemoteClientService
 
         if (string.IsNullOrWhiteSpace(host))
         {
-            throw new InvalidOperationException("Informe o IP ou nome do host.");
+            throw new InvalidOperationException("Enter the host IP or host name.");
         }
 
         var client = new TcpClient
@@ -46,7 +46,7 @@ internal sealed class RemoteClientService
         if (authPacket is not AuthResultServerPacket authResult || !authResult.Success)
         {
             client.Dispose();
-            throw new InvalidOperationException(authPacket is AuthResultServerPacket result ? result.Message : "Falha na autenticação.");
+            throw new InvalidOperationException(authPacket is AuthResultServerPacket result ? result.Message : "Authentication failed.");
         }
 
         try
@@ -65,7 +65,7 @@ internal sealed class RemoteClientService
             throw;
         }
 
-        StatusChanged?.Invoke($"conectado a {host}:{port}, com áudio na porta {port + AudioPortOffset}.");
+        StatusChanged?.Invoke($"Connected to {host}:{port}, audio on port {port + AudioPortOffset}.");
         ConnectionChanged?.Invoke(true);
     }
 
@@ -116,7 +116,7 @@ internal sealed class RemoteClientService
         var fileInfo = new FileInfo(filePath);
         if (!fileInfo.Exists)
         {
-            throw new FileNotFoundException("Arquivo não encontrado.", filePath);
+            throw new FileNotFoundException("File not found.", filePath);
         }
 
         var lockAcquired = false;
@@ -134,7 +134,7 @@ internal sealed class RemoteClientService
                 await RemoteProtocol.WriteFileChunkAsync(stream, buffer, read, cancellation.Token);
             }
 
-            StatusChanged?.Invoke($"arquivo enviado: {fileInfo.Name}");
+            StatusChanged?.Invoke($"File sent: {fileInfo.Name}");
         }
         finally
         {
@@ -181,7 +181,7 @@ internal sealed class RemoteClientService
             stream?.Dispose();
             client.Dispose();
             lifetimeCancellation?.Dispose();
-            StatusChanged?.Invoke("cliente desconectado.");
+            StatusChanged?.Invoke("Client disconnected.");
             ConnectionChanged?.Invoke(false);
         }
     }
@@ -200,7 +200,7 @@ internal sealed class RemoteClientService
                         break;
                     case ClipboardResponseServerPacket clipboardPacket:
                         WindowsClipboard.SetText(clipboardPacket.Text);
-                        StatusChanged?.Invoke("clipboard remoto copiado para este computador.");
+                        StatusChanged?.Invoke("Remote clipboard copied to this computer.");
                         break;
                 }
             }
@@ -214,7 +214,7 @@ internal sealed class RemoteClientService
         }
         catch (Exception exception)
         {
-            StatusChanged?.Invoke($"erro no cliente: {exception.Message}");
+            StatusChanged?.Invoke($"Client error: {exception.Message}");
             await DisconnectAsync(waitForReceiveLoop: false);
         }
     }

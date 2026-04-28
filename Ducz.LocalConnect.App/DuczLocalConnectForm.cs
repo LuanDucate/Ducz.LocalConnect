@@ -14,6 +14,7 @@ public partial class DuczLocalConnectForm : Form
     private TabPage _clientTab = null!;
     private Label _hostIpLabel = null!;
     private NumericUpDown _hostPortInput = null!;
+    private ComboBox _hostMonitorInput = null!;
     private Button _startHostButton = null!;
     private Button _stopHostButton = null!;
     private Label _hostStatusLabel = null!;
@@ -44,6 +45,7 @@ public partial class DuczLocalConnectForm : Form
     {
         InitializeComponent();
         BuildLayout();
+        PopulateHostMonitorChoices();
         WireEvents();
         RefreshNetworkInfo();
         ApplyBranding();
@@ -62,7 +64,7 @@ public partial class DuczLocalConnectForm : Form
         };
 
         _hostTab = new TabPage("Host");
-        _clientTab = new TabPage("Cliente");
+        _clientTab = new TabPage("Client");
 
         BuildHostTab();
         BuildClientTab();
@@ -91,7 +93,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Font = new Font(Font, FontStyle.Bold),
-            Text = "Compartilhe este computador na rede local"
+            Text = "Share this computer on your local network"
         };
 
         var settingsPanel = new FlowLayoutPanel
@@ -107,7 +109,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(0, 8, 8, 0),
-            Text = "Porta"
+            Text = "Port"
         });
 
         _hostPortInput = new NumericUpDown
@@ -118,6 +120,20 @@ public partial class DuczLocalConnectForm : Form
             Width = 100
         };
         settingsPanel.Controls.Add(_hostPortInput);
+
+        settingsPanel.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Margin = new Padding(12, 8, 8, 0),
+            Text = "Monitor"
+        });
+
+        _hostMonitorInput = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Width = 280
+        };
+        settingsPanel.Controls.Add(_hostMonitorInput);
 
         settingsPanel.Controls.Add(new Label
         {
@@ -138,7 +154,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(12, 0, 0, 0),
-            Text = "Iniciar host"
+            Text = "Start host"
         };
         settingsPanel.Controls.Add(_startHostButton);
 
@@ -146,7 +162,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(8, 0, 0, 0),
-            Text = "Parar"
+            Text = "Stop"
         };
         settingsPanel.Controls.Add(_stopHostButton);
 
@@ -154,14 +170,14 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(0, 18, 0, 0),
-            Text = "IPs locais: carregando..."
+            Text = "Local IPs: loading..."
         };
 
         _hostStatusLabel = new Label
         {
             AutoSize = true,
             Margin = new Padding(0, 12, 0, 0),
-            Text = "Status: host parado."
+            Text = "Status: host stopped."
         };
 
         var notes = new Label
@@ -169,7 +185,7 @@ public partial class DuczLocalConnectForm : Form
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 0),
             MaximumSize = new Size(800, 0),
-            Text = "Agora o host expõe vídeo, controle remoto e áudio da máquina. O áudio usa a porta seguinte ao vídeo: se a tela usa 5050, o áudio usa 5051. O cliente precisa informar o PIN antes de conectar."
+            Text = "The host now exposes video, remote input and system audio. Choose which monitor to share before starting the host. Audio uses the next port after video, so if video uses 5050, audio uses 5051. The client must provide the PIN before connecting."
         };
 
         root.Controls.Add(BuildTitleHeader(title), 0, 0);
@@ -209,7 +225,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Font = new Font(Font, FontStyle.Bold),
-            Text = "Controle outro computador na rede local"
+            Text = "Control another computer on your local network"
         };
 
         var connectPanel = new FlowLayoutPanel
@@ -224,7 +240,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(0, 8, 8, 0),
-            Text = "IP do host"
+            Text = "Host IP"
         });
 
         _clientHostInput = new TextBox
@@ -238,7 +254,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(12, 8, 8, 0),
-            Text = "Porta"
+            Text = "Port"
         });
 
         _clientPortInput = new NumericUpDown
@@ -269,7 +285,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(12, 0, 0, 0),
-            Text = "Conectar"
+            Text = "Connect"
         };
         connectPanel.Controls.Add(_connectButton);
 
@@ -277,7 +293,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(8, 0, 0, 0),
-            Text = "Desconectar"
+            Text = "Disconnect"
         };
         connectPanel.Controls.Add(_disconnectButton);
 
@@ -285,7 +301,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(8, 0, 0, 0),
-            Text = "Tela cheia"
+            Text = "Full screen"
         };
         connectPanel.Controls.Add(_fullScreenButton);
 
@@ -293,7 +309,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(8, 0, 0, 0),
-            Text = "Enviar clipboard"
+            Text = "Send clipboard"
         };
         connectPanel.Controls.Add(_sendClipboardButton);
 
@@ -301,7 +317,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(8, 0, 0, 0),
-            Text = "Copiar clipboard remoto"
+            Text = "Fetch remote clipboard"
         };
         connectPanel.Controls.Add(_receiveClipboardButton);
 
@@ -309,7 +325,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(8, 0, 0, 0),
-            Text = "Enviar arquivo"
+            Text = "Send file"
         };
         connectPanel.Controls.Add(_sendFileButton);
 
@@ -317,7 +333,7 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(0, 12, 0, 0),
-            Text = "Status: cliente desconectado."
+            Text = "Status: client disconnected."
         };
 
         _clientHintLabel = new Label
@@ -325,7 +341,7 @@ public partial class DuczLocalConnectForm : Form
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 0),
             MaximumSize = new Size(900, 0),
-            Text = "Clique na imagem remota para capturar mouse e teclado. Use F11 para entrar em tela cheia e Esc para sair. O áudio remoto conecta automaticamente. Clipboard e arquivos são enviados manualmente pelos botões acima."
+            Text = "Click the remote image to capture mouse and keyboard. Press F11 for full screen and Esc to leave it. Remote audio connects automatically. Clipboard and files are transferred manually using the buttons above."
         };
 
         _remoteScreen = new FocusablePictureBox
@@ -411,12 +427,31 @@ public partial class DuczLocalConnectForm : Form
             .ToArray();
 
         _hostIpLabel.Text = addresses.Length == 0
-            ? "IPs locais: nenhum IPv4 detectado."
-            : $"IPs locais: {string.Join(", ", addresses)}";
+            ? "Local IPs: no IPv4 address detected."
+            : $"Local IPs: {string.Join(", ", addresses)}";
 
         if (addresses.Length > 0 && string.Equals(_clientHostInput.Text, "127.0.0.1", StringComparison.Ordinal))
         {
             _clientHostInput.Text = addresses[0];
+        }
+    }
+
+    private void PopulateHostMonitorChoices()
+    {
+        _hostMonitorInput.Items.Clear();
+
+        var screens = Screen.AllScreens;
+        for (var index = 0; index < screens.Length; index++)
+        {
+            var screen = screens[index];
+            var primarySuffix = screen.Primary ? " (Primary)" : string.Empty;
+            var label = $"Monitor {index + 1}: {screen.Bounds.Width}x{screen.Bounds.Height} at {screen.Bounds.X},{screen.Bounds.Y}{primarySuffix}";
+            _hostMonitorInput.Items.Add(new MonitorChoice(screen.DeviceName, label));
+        }
+
+        if (_hostMonitorInput.Items.Count > 0)
+        {
+            _hostMonitorInput.SelectedIndex = 0;
         }
     }
 
@@ -425,6 +460,7 @@ public partial class DuczLocalConnectForm : Form
         _startHostButton.Enabled = !_hostService.IsRunning;
         _stopHostButton.Enabled = _hostService.IsRunning;
         _hostPortInput.Enabled = !_hostService.IsRunning;
+        _hostMonitorInput.Enabled = !_hostService.IsRunning;
         _hostPinInput.Enabled = !_hostService.IsRunning;
 
         _connectButton.Enabled = !_clientService.IsConnected;
@@ -436,7 +472,7 @@ public partial class DuczLocalConnectForm : Form
         _clientHostInput.Enabled = !_clientService.IsConnected;
         _clientPortInput.Enabled = !_clientService.IsConnected;
         _clientPinInput.Enabled = !_clientService.IsConnected;
-        _fullScreenButton.Text = _isFullScreen ? "Sair da tela cheia" : "Tela cheia";
+        _fullScreenButton.Text = _isFullScreen ? "Exit full screen" : "Full screen";
     }
 
     private void UpdateRemoteFrame(RemoteFrame frame)
@@ -466,12 +502,13 @@ public partial class DuczLocalConnectForm : Form
     {
         try
         {
-            _hostService.Start((int)_hostPortInput.Value, _hostPinInput.Text.Trim());
+            var selectedMonitor = _hostMonitorInput.SelectedItem as MonitorChoice;
+            _hostService.Start((int)_hostPortInput.Value, _hostPinInput.Text.Trim(), selectedMonitor?.DeviceName);
             UpdateActionState();
         }
         catch (Exception exception)
         {
-            MessageBox.Show(this, exception.Message, "Erro ao iniciar host", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, exception.Message, "Failed to start host", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -490,7 +527,7 @@ public partial class DuczLocalConnectForm : Form
         }
         catch (Exception exception)
         {
-            MessageBox.Show(this, exception.Message, "Erro ao conectar", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, exception.Message, "Failed to connect", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
@@ -518,7 +555,7 @@ public partial class DuczLocalConnectForm : Form
         }
         catch (Exception exception)
         {
-            MessageBox.Show(this, exception.Message, "Erro ao enviar clipboard", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, exception.Message, "Failed to send clipboard", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -530,7 +567,7 @@ public partial class DuczLocalConnectForm : Form
         }
         catch (Exception exception)
         {
-            MessageBox.Show(this, exception.Message, "Erro ao copiar clipboard remoto", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, exception.Message, "Failed to fetch remote clipboard", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -538,7 +575,7 @@ public partial class DuczLocalConnectForm : Form
     {
         using var fileDialog = new OpenFileDialog
         {
-            Title = "Escolha um arquivo para enviar ao host"
+            Title = "Choose a file to send to the host"
         };
 
         if (fileDialog.ShowDialog(this) != DialogResult.OK)
@@ -552,7 +589,7 @@ public partial class DuczLocalConnectForm : Form
         }
         catch (Exception exception)
         {
-            MessageBox.Show(this, exception.Message, "Erro ao enviar arquivo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, exception.Message, "Failed to send file", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -837,5 +874,15 @@ public partial class DuczLocalConnectForm : Form
         _isFullScreen = false;
         _remoteScreen.Focus();
         UpdateActionState();
+    }
+
+    private sealed class MonitorChoice(string deviceName, string displayName)
+    {
+        public string DeviceName { get; } = deviceName;
+
+        public override string ToString()
+        {
+            return displayName;
+        }
     }
 }
