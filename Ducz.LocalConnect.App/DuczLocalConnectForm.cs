@@ -1,9 +1,10 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 
 namespace Ducz.LocalConnect.App;
 
-public partial class Form1 : Form
+public partial class DuczLocalConnectForm : Form
 {
     private readonly RemoteHostService _hostService = new();
     private readonly RemoteClientService _clientService = new();
@@ -16,22 +17,36 @@ public partial class Form1 : Form
     private Button _startHostButton = null!;
     private Button _stopHostButton = null!;
     private Label _hostStatusLabel = null!;
+    private TextBox _hostPinInput = null!;
     private TextBox _clientHostInput = null!;
     private NumericUpDown _clientPortInput = null!;
+    private TextBox _clientPinInput = null!;
     private Button _connectButton = null!;
     private Button _disconnectButton = null!;
+    private Button _fullScreenButton = null!;
+    private Button _sendClipboardButton = null!;
+    private Button _receiveClipboardButton = null!;
+    private Button _sendFileButton = null!;
     private Label _clientStatusLabel = null!;
     private FocusablePictureBox _remoteScreen = null!;
     private Label _clientHintLabel = null!;
+    private Panel _remoteScreenHost = null!;
 
+    private bool _isFullScreen;
+    private FormBorderStyle _previousBorderStyle;
+    private FormWindowState _previousWindowState;
+    private bool _previousTopMost;
     private Size _remoteDesktopSize = Size.Empty;
+    private Bitmap? _remoteDesktopBitmap;
+    private long _lastMouseMoveSentAt;
 
-    public Form1()
+    public DuczLocalConnectForm()
     {
         InitializeComponent();
         BuildLayout();
         WireEvents();
         RefreshNetworkInfo();
+        ApplyBranding();
         UpdateActionState();
     }
 
@@ -104,6 +119,21 @@ public partial class Form1 : Form
         };
         settingsPanel.Controls.Add(_hostPortInput);
 
+        settingsPanel.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Margin = new Padding(12, 8, 8, 0),
+            Text = "PIN"
+        });
+
+        _hostPinInput = new TextBox
+        {
+            Width = 120,
+            Text = "123456",
+            UseSystemPasswordChar = true
+        };
+        settingsPanel.Controls.Add(_hostPinInput);
+
         _startHostButton = new Button
         {
             AutoSize = true,
@@ -139,10 +169,10 @@ public partial class Form1 : Form
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 0),
             MaximumSize = new Size(800, 0),
-            Text = "MVP para LAN: um cliente por vez, captura da tela principal e controle básico de mouse e teclado. Use apenas em rede confiável."
+            Text = "Agora o host expõe vídeo, controle remoto e áudio da máquina. O áudio usa a porta seguinte ao vídeo: se a tela usa 5050, o áudio usa 5051. O cliente precisa informar o PIN antes de conectar."
         };
 
-        root.Controls.Add(title, 0, 0);
+        root.Controls.Add(BuildTitleHeader(title), 0, 0);
         root.Controls.Add(settingsPanel, 0, 1);
         root.Controls.Add(_hostIpLabel, 0, 2);
 
@@ -167,12 +197,20 @@ public partial class Form1 : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 3,
+            RowCount = 4,
             Padding = new Padding(16)
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+        var title = new Label
+        {
+            AutoSize = true,
+            Font = new Font(Font, FontStyle.Bold),
+            Text = "Controle outro computador na rede local"
+        };
 
         var connectPanel = new FlowLayoutPanel
         {
@@ -212,6 +250,21 @@ public partial class Form1 : Form
         };
         connectPanel.Controls.Add(_clientPortInput);
 
+        connectPanel.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Margin = new Padding(12, 8, 8, 0),
+            Text = "PIN"
+        });
+
+        _clientPinInput = new TextBox
+        {
+            Width = 120,
+            Text = "123456",
+            UseSystemPasswordChar = true
+        };
+        connectPanel.Controls.Add(_clientPinInput);
+
         _connectButton = new Button
         {
             AutoSize = true,
@@ -228,6 +281,38 @@ public partial class Form1 : Form
         };
         connectPanel.Controls.Add(_disconnectButton);
 
+        _fullScreenButton = new Button
+        {
+            AutoSize = true,
+            Margin = new Padding(8, 0, 0, 0),
+            Text = "Tela cheia"
+        };
+        connectPanel.Controls.Add(_fullScreenButton);
+
+        _sendClipboardButton = new Button
+        {
+            AutoSize = true,
+            Margin = new Padding(8, 0, 0, 0),
+            Text = "Enviar clipboard"
+        };
+        connectPanel.Controls.Add(_sendClipboardButton);
+
+        _receiveClipboardButton = new Button
+        {
+            AutoSize = true,
+            Margin = new Padding(8, 0, 0, 0),
+            Text = "Copiar clipboard remoto"
+        };
+        connectPanel.Controls.Add(_receiveClipboardButton);
+
+        _sendFileButton = new Button
+        {
+            AutoSize = true,
+            Margin = new Padding(8, 0, 0, 0),
+            Text = "Enviar arquivo"
+        };
+        connectPanel.Controls.Add(_sendFileButton);
+
         _clientStatusLabel = new Label
         {
             AutoSize = true,
@@ -240,19 +325,25 @@ public partial class Form1 : Form
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 0),
             MaximumSize = new Size(900, 0),
-            Text = "Clique na imagem remota para capturar mouse e teclado. A tela usa modo Zoom, então os cliques são ajustados para a resolução do host."
+            Text = "Clique na imagem remota para capturar mouse e teclado. Use F11 para entrar em tela cheia e Esc para sair. O áudio remoto conecta automaticamente. Clipboard e arquivos são enviados manualmente pelos botões acima."
         };
 
         _remoteScreen = new FocusablePictureBox
         {
             BackColor = Color.FromArgb(24, 24, 24),
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 16, 0, 0),
+            Margin = new Padding(0),
             SizeMode = PictureBoxSizeMode.Zoom,
             TabStop = true
         };
 
-        root.Controls.Add(connectPanel, 0, 0);
+        _remoteScreenHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 16, 0, 0),
+            BackColor = Color.Black
+        };
+        _remoteScreenHost.Controls.Add(_remoteScreen);
 
         var infoPanel = new FlowLayoutPanel
         {
@@ -265,8 +356,10 @@ public partial class Form1 : Form
         infoPanel.Controls.Add(_clientStatusLabel);
         infoPanel.Controls.Add(_clientHintLabel);
 
-        root.Controls.Add(infoPanel, 0, 1);
-        root.Controls.Add(_remoteScreen, 0, 2);
+        root.Controls.Add(BuildTitleHeader(title), 0, 0);
+        root.Controls.Add(connectPanel, 0, 1);
+        root.Controls.Add(infoPanel, 0, 2);
+        root.Controls.Add(_remoteScreenHost, 0, 3);
 
         _clientTab.Controls.Add(root);
     }
@@ -277,6 +370,10 @@ public partial class Form1 : Form
         _stopHostButton.Click += StopHostButton_Click;
         _connectButton.Click += ConnectButton_Click;
         _disconnectButton.Click += DisconnectButton_Click;
+        _fullScreenButton.Click += FullScreenButton_Click;
+        _sendClipboardButton.Click += SendClipboardButton_Click;
+        _receiveClipboardButton.Click += ReceiveClipboardButton_Click;
+        _sendFileButton.Click += SendFileButton_Click;
 
         _remoteScreen.MouseMove += RemoteScreen_MouseMove;
         _remoteScreen.MouseDown += RemoteScreen_MouseDown;
@@ -284,9 +381,9 @@ public partial class Form1 : Form
         _remoteScreen.MouseWheel += RemoteScreen_MouseWheel;
         _remoteScreen.MouseClick += (_, _) => _remoteScreen.Focus();
 
-        KeyDown += Form1_KeyDown;
-        KeyUp += Form1_KeyUp;
-        FormClosing += Form1_FormClosing;
+        KeyDown += Form_KeyDown;
+        KeyUp += Form_KeyUp;
+        FormClosing += Form_FormClosing;
 
         _hostService.StatusChanged += message => RunOnUiThread(() =>
         {
@@ -328,38 +425,54 @@ public partial class Form1 : Form
         _startHostButton.Enabled = !_hostService.IsRunning;
         _stopHostButton.Enabled = _hostService.IsRunning;
         _hostPortInput.Enabled = !_hostService.IsRunning;
+        _hostPinInput.Enabled = !_hostService.IsRunning;
 
         _connectButton.Enabled = !_clientService.IsConnected;
         _disconnectButton.Enabled = _clientService.IsConnected;
+        _fullScreenButton.Enabled = _clientService.IsConnected;
+        _sendClipboardButton.Enabled = _clientService.IsConnected;
+        _receiveClipboardButton.Enabled = _clientService.IsConnected;
+        _sendFileButton.Enabled = _clientService.IsConnected;
         _clientHostInput.Enabled = !_clientService.IsConnected;
         _clientPortInput.Enabled = !_clientService.IsConnected;
+        _clientPinInput.Enabled = !_clientService.IsConnected;
+        _fullScreenButton.Text = _isFullScreen ? "Sair da tela cheia" : "Tela cheia";
     }
 
     private void UpdateRemoteFrame(RemoteFrame frame)
     {
         using var stream = new MemoryStream(frame.ImageBytes, writable: false);
         using var sourceImage = Image.FromStream(stream);
-        var bitmap = new Bitmap(sourceImage);
+        using var bitmap = new Bitmap(sourceImage);
 
-        var previousImage = _remoteScreen.Image;
-        _remoteScreen.Image = bitmap;
-        previousImage?.Dispose();
-        _remoteDesktopSize = new Size(frame.Width, frame.Height);
+        if (frame.Kind == RemoteFrameKind.Full || _remoteDesktopBitmap is null || _remoteDesktopBitmap.Width != frame.DesktopWidth || _remoteDesktopBitmap.Height != frame.DesktopHeight)
+        {
+            var previousImage = _remoteDesktopBitmap;
+            _remoteDesktopBitmap = new Bitmap(bitmap);
+            _remoteScreen.Image = _remoteDesktopBitmap;
+            previousImage?.Dispose();
+        }
+        else
+        {
+            using var graphics = Graphics.FromImage(_remoteDesktopBitmap);
+            graphics.DrawImage(bitmap, new Rectangle(frame.X, frame.Y, frame.Width, frame.Height));
+            _remoteScreen.Invalidate();
+        }
+
+        _remoteDesktopSize = new Size(frame.DesktopWidth, frame.DesktopHeight);
     }
 
-    private async void StartHostButton_Click(object? sender, EventArgs e)
+    private void StartHostButton_Click(object? sender, EventArgs e)
     {
         try
         {
-            _hostService.Start((int)_hostPortInput.Value);
+            _hostService.Start((int)_hostPortInput.Value, _hostPinInput.Text.Trim());
             UpdateActionState();
         }
         catch (Exception exception)
         {
             MessageBox.Show(this, exception.Message, "Erro ao iniciar host", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-
-        await Task.CompletedTask;
     }
 
     private async void StopHostButton_Click(object? sender, EventArgs e)
@@ -372,7 +485,7 @@ public partial class Form1 : Form
     {
         try
         {
-            await _clientService.ConnectAsync(_clientHostInput.Text.Trim(), (int)_clientPortInput.Value);
+            await _clientService.ConnectAsync(_clientHostInput.Text.Trim(), (int)_clientPortInput.Value, _clientPinInput.Text.Trim());
             _remoteScreen.Focus();
         }
         catch (Exception exception)
@@ -387,8 +500,60 @@ public partial class Form1 : Form
 
     private async void DisconnectButton_Click(object? sender, EventArgs e)
     {
+        ExitFullScreen();
         await _clientService.DisconnectAsync();
         UpdateActionState();
+    }
+
+    private void FullScreenButton_Click(object? sender, EventArgs e)
+    {
+        ToggleFullScreen();
+    }
+
+    private async void SendClipboardButton_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            await _clientService.SendClipboardTextAsync(WindowsClipboard.GetText());
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, exception.Message, "Erro ao enviar clipboard", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async void ReceiveClipboardButton_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            await _clientService.RequestClipboardAsync();
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, exception.Message, "Erro ao copiar clipboard remoto", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async void SendFileButton_Click(object? sender, EventArgs e)
+    {
+        using var fileDialog = new OpenFileDialog
+        {
+            Title = "Escolha um arquivo para enviar ao host"
+        };
+
+        if (fileDialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            await _clientService.SendFileAsync(fileDialog.FileName);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, exception.Message, "Erro ao enviar arquivo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private async void RemoteScreen_MouseMove(object? sender, MouseEventArgs e)
@@ -399,7 +564,15 @@ public partial class Form1 : Form
             return;
         }
 
-        await _clientService.SendMouseMoveAsync(point.Value.X, point.Value.Y);
+        var now = Stopwatch.GetTimestamp();
+        var elapsedMilliseconds = (now - _lastMouseMoveSentAt) * 1000d / Stopwatch.Frequency;
+        if (elapsedMilliseconds < 12)
+        {
+            return;
+        }
+
+        _lastMouseMoveSentAt = now;
+        _ = _clientService.SendMouseMoveAsync(point.Value.X, point.Value.Y);
     }
 
     private async void RemoteScreen_MouseDown(object? sender, MouseEventArgs e)
@@ -438,8 +611,22 @@ public partial class Form1 : Form
         await _clientService.SendMouseWheelAsync(point.Value.X, point.Value.Y, e.Delta);
     }
 
-    private async void Form1_KeyDown(object? sender, KeyEventArgs e)
+    private async void Form_KeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.KeyCode == Keys.F11 && _clientService.IsConnected)
+        {
+            e.Handled = true;
+            ToggleFullScreen();
+            return;
+        }
+
+        if (e.KeyCode == Keys.Escape && _isFullScreen)
+        {
+            e.Handled = true;
+            ExitFullScreen();
+            return;
+        }
+
         if (!ShouldForwardKeyboard())
         {
             return;
@@ -449,8 +636,14 @@ public partial class Form1 : Form
         await _clientService.SendKeyAsync((int)e.KeyCode, isDown: true);
     }
 
-    private async void Form1_KeyUp(object? sender, KeyEventArgs e)
+    private async void Form_KeyUp(object? sender, KeyEventArgs e)
     {
+        if ((e.KeyCode == Keys.F11 && _clientService.IsConnected) || (e.KeyCode == Keys.Escape && _isFullScreen))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (!ShouldForwardKeyboard())
         {
             return;
@@ -460,8 +653,10 @@ public partial class Form1 : Form
         await _clientService.SendKeyAsync((int)e.KeyCode, isDown: false);
     }
 
-    private async void Form1_FormClosing(object? sender, FormClosingEventArgs e)
+    private async void Form_FormClosing(object? sender, FormClosingEventArgs e)
     {
+        ExitFullScreen();
+        _remoteDesktopBitmap?.Dispose();
         await _clientService.DisconnectAsync();
         await _hostService.StopAsync();
     }
@@ -469,7 +664,7 @@ public partial class Form1 : Form
     private bool ShouldForwardKeyboard()
     {
         return _clientService.IsConnected
-            && _mainTabs.SelectedTab == _clientTab
+            && (_isFullScreen || _mainTabs.SelectedTab == _clientTab)
             && _remoteScreen.ContainsFocus;
     }
 
@@ -542,5 +737,105 @@ public partial class Form1 : Form
         }
 
         action();
+    }
+
+    private Control BuildTitleHeader(Label title)
+    {
+        var panel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0),
+            WrapContents = false
+        };
+
+        var logo = CreateLogoPictureBox();
+        if (logo is not null)
+        {
+            panel.Controls.Add(logo);
+        }
+
+        title.Margin = new Padding(0, 10, 0, 0);
+        panel.Controls.Add(title);
+        return panel;
+    }
+
+    private PictureBox? CreateLogoPictureBox()
+    {
+        var logoPath = Path.Combine(AppContext.BaseDirectory, "Ducz_icon.png");
+        if (!File.Exists(logoPath))
+        {
+            return null;
+        }
+
+        return new PictureBox
+        {
+            Image = Image.FromFile(logoPath),
+            Margin = new Padding(0, 0, 12, 0),
+            Size = new Size(44, 44),
+            SizeMode = PictureBoxSizeMode.Zoom
+        };
+    }
+
+    private void ApplyBranding()
+    {
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "favicon.ico");
+        if (File.Exists(iconPath))
+        {
+            Icon = new Icon(iconPath);
+        }
+    }
+
+    private void ToggleFullScreen()
+    {
+        if (!_clientService.IsConnected)
+        {
+            return;
+        }
+
+        if (_isFullScreen)
+        {
+            ExitFullScreen();
+            return;
+        }
+
+        _previousBorderStyle = FormBorderStyle;
+        _previousWindowState = WindowState;
+        _previousTopMost = TopMost;
+
+        _remoteScreenHost.Controls.Remove(_remoteScreen);
+        Controls.Add(_remoteScreen);
+        _remoteScreen.Dock = DockStyle.Fill;
+        _remoteScreen.BringToFront();
+
+        _mainTabs.Visible = false;
+        FormBorderStyle = FormBorderStyle.None;
+        WindowState = FormWindowState.Maximized;
+        TopMost = true;
+        _isFullScreen = true;
+        _remoteScreen.Focus();
+        UpdateActionState();
+    }
+
+    private void ExitFullScreen()
+    {
+        if (!_isFullScreen)
+        {
+            return;
+        }
+
+        Controls.Remove(_remoteScreen);
+        _remoteScreenHost.Controls.Add(_remoteScreen);
+        _remoteScreen.Dock = DockStyle.Fill;
+
+        _mainTabs.Visible = true;
+        FormBorderStyle = _previousBorderStyle;
+        WindowState = _previousWindowState;
+        TopMost = _previousTopMost;
+        _mainTabs.SelectedTab = _clientTab;
+        _isFullScreen = false;
+        _remoteScreen.Focus();
+        UpdateActionState();
     }
 }

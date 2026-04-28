@@ -1,6 +1,6 @@
 ﻿namespace Ducz.LocalConnect.App;
 
-partial class Form1
+partial class DuczLocalConnectForm
 {
     /// <summary>
     ///  Required designer variable.
