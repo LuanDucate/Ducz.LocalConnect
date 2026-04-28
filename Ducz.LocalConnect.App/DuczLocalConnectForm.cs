@@ -14,7 +14,6 @@ public partial class DuczLocalConnectForm : Form
     private TabPage _clientTab = null!;
     private Label _hostIpLabel = null!;
     private NumericUpDown _hostPortInput = null!;
-    private ComboBox _hostMonitorInput = null!;
     private Button _startHostButton = null!;
     private Button _stopHostButton = null!;
     private Label _hostStatusLabel = null!;
@@ -25,15 +24,20 @@ public partial class DuczLocalConnectForm : Form
     private Button _connectButton = null!;
     private Button _disconnectButton = null!;
     private Button _fullScreenButton = null!;
+    private Button _keyboardCaptureButton = null!;
     private Button _sendClipboardButton = null!;
     private Button _receiveClipboardButton = null!;
     private Button _sendFileButton = null!;
     private Label _clientStatusLabel = null!;
     private FocusablePictureBox _remoteScreen = null!;
     private Label _clientHintLabel = null!;
+    private Label _clientMonitorsLabel = null!;
+    private FlowLayoutPanel _clientMonitorsPanel = null!;
     private Panel _remoteScreenHost = null!;
 
     private bool _isFullScreen;
+    private bool _isKeyboardCaptureEnabled;
+    private bool _updatingMonitorOptions;
     private FormBorderStyle _previousBorderStyle;
     private FormWindowState _previousWindowState;
     private bool _previousTopMost;
@@ -45,7 +49,6 @@ public partial class DuczLocalConnectForm : Form
     {
         InitializeComponent();
         BuildLayout();
-        PopulateHostMonitorChoices();
         WireEvents();
         RefreshNetworkInfo();
         ApplyBranding();
@@ -125,20 +128,6 @@ public partial class DuczLocalConnectForm : Form
         {
             AutoSize = true,
             Margin = new Padding(12, 8, 8, 0),
-            Text = "Monitor"
-        });
-
-        _hostMonitorInput = new ComboBox
-        {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Width = 280
-        };
-        settingsPanel.Controls.Add(_hostMonitorInput);
-
-        settingsPanel.Controls.Add(new Label
-        {
-            AutoSize = true,
-            Margin = new Padding(12, 8, 8, 0),
             Text = "PIN"
         });
 
@@ -185,7 +174,7 @@ public partial class DuczLocalConnectForm : Form
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 0),
             MaximumSize = new Size(800, 0),
-            Text = "The host now exposes video, remote input and system audio. Choose which monitor to share before starting the host. Audio uses the next port after video, so if video uses 5050, audio uses 5051. The client must provide the PIN before connecting."
+            Text = "The host now exposes video, remote input and system audio. The client can choose which monitor to view after connecting. Audio uses the next port after video, so if video uses 5050, audio uses 5051. The client must provide the PIN before connecting."
         };
 
         root.Controls.Add(BuildTitleHeader(title), 0, 0);
@@ -305,6 +294,14 @@ public partial class DuczLocalConnectForm : Form
         };
         connectPanel.Controls.Add(_fullScreenButton);
 
+        _keyboardCaptureButton = new Button
+        {
+            AutoSize = true,
+            Margin = new Padding(8, 0, 0, 0),
+            Text = "Capture keyboard"
+        };
+        connectPanel.Controls.Add(_keyboardCaptureButton);
+
         _sendClipboardButton = new Button
         {
             AutoSize = true,
@@ -341,7 +338,23 @@ public partial class DuczLocalConnectForm : Form
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 0),
             MaximumSize = new Size(900, 0),
-            Text = "Click the remote image to capture mouse and keyboard. Press F11 for full screen and Esc to leave it. Remote audio connects automatically. Clipboard and files are transferred manually using the buttons above."
+            Text = "Click the remote image or use Capture keyboard to send keystrokes to the host. Press Ctrl+Alt+Home to toggle keyboard capture. While capture is paused, local shortcuts such as Alt+Tab stay on this PC. Remote audio connects automatically. Clipboard and files are transferred manually using the buttons above."
+        };
+
+        _clientMonitorsLabel = new Label
+        {
+            AutoSize = true,
+            Margin = new Padding(0, 8, 0, 0),
+            Text = "Remote monitors: connect to load options."
+        };
+
+        _clientMonitorsPanel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0),
+            WrapContents = true
         };
 
         _remoteScreen = new FocusablePictureBox
@@ -371,6 +384,8 @@ public partial class DuczLocalConnectForm : Form
         };
         infoPanel.Controls.Add(_clientStatusLabel);
         infoPanel.Controls.Add(_clientHintLabel);
+        infoPanel.Controls.Add(_clientMonitorsLabel);
+        infoPanel.Controls.Add(_clientMonitorsPanel);
 
         root.Controls.Add(BuildTitleHeader(title), 0, 0);
         root.Controls.Add(connectPanel, 0, 1);
@@ -387,6 +402,7 @@ public partial class DuczLocalConnectForm : Form
         _connectButton.Click += ConnectButton_Click;
         _disconnectButton.Click += DisconnectButton_Click;
         _fullScreenButton.Click += FullScreenButton_Click;
+        _keyboardCaptureButton.Click += KeyboardCaptureButton_Click;
         _sendClipboardButton.Click += SendClipboardButton_Click;
         _receiveClipboardButton.Click += ReceiveClipboardButton_Click;
         _sendFileButton.Click += SendFileButton_Click;
@@ -395,7 +411,11 @@ public partial class DuczLocalConnectForm : Form
         _remoteScreen.MouseDown += RemoteScreen_MouseDown;
         _remoteScreen.MouseUp += RemoteScreen_MouseUp;
         _remoteScreen.MouseWheel += RemoteScreen_MouseWheel;
-        _remoteScreen.MouseClick += (_, _) => _remoteScreen.Focus();
+        _remoteScreen.MouseClick += (_, _) =>
+        {
+            _remoteScreen.Focus();
+            SetKeyboardCapture(true);
+        };
 
         KeyDown += Form_KeyDown;
         KeyUp += Form_KeyUp;
@@ -415,6 +435,7 @@ public partial class DuczLocalConnectForm : Form
 
         _clientService.FrameReceived += frame => RunOnUiThread(() => UpdateRemoteFrame(frame));
         _clientService.ConnectionChanged += _ => RunOnUiThread(UpdateActionState);
+        _clientService.MonitorsChanged += monitors => RunOnUiThread(() => UpdateMonitorOptions(monitors));
     }
 
     private void RefreshNetworkInfo()
@@ -436,36 +457,17 @@ public partial class DuczLocalConnectForm : Form
         }
     }
 
-    private void PopulateHostMonitorChoices()
-    {
-        _hostMonitorInput.Items.Clear();
-
-        var screens = Screen.AllScreens;
-        for (var index = 0; index < screens.Length; index++)
-        {
-            var screen = screens[index];
-            var primarySuffix = screen.Primary ? " (Primary)" : string.Empty;
-            var label = $"Monitor {index + 1}: {screen.Bounds.Width}x{screen.Bounds.Height} at {screen.Bounds.X},{screen.Bounds.Y}{primarySuffix}";
-            _hostMonitorInput.Items.Add(new MonitorChoice(screen.DeviceName, label));
-        }
-
-        if (_hostMonitorInput.Items.Count > 0)
-        {
-            _hostMonitorInput.SelectedIndex = 0;
-        }
-    }
-
     private void UpdateActionState()
     {
         _startHostButton.Enabled = !_hostService.IsRunning;
         _stopHostButton.Enabled = _hostService.IsRunning;
         _hostPortInput.Enabled = !_hostService.IsRunning;
-        _hostMonitorInput.Enabled = !_hostService.IsRunning;
         _hostPinInput.Enabled = !_hostService.IsRunning;
 
         _connectButton.Enabled = !_clientService.IsConnected;
         _disconnectButton.Enabled = _clientService.IsConnected;
         _fullScreenButton.Enabled = _clientService.IsConnected;
+        _keyboardCaptureButton.Enabled = _clientService.IsConnected;
         _sendClipboardButton.Enabled = _clientService.IsConnected;
         _receiveClipboardButton.Enabled = _clientService.IsConnected;
         _sendFileButton.Enabled = _clientService.IsConnected;
@@ -473,6 +475,45 @@ public partial class DuczLocalConnectForm : Form
         _clientPortInput.Enabled = !_clientService.IsConnected;
         _clientPinInput.Enabled = !_clientService.IsConnected;
         _fullScreenButton.Text = _isFullScreen ? "Exit full screen" : "Full screen";
+        _keyboardCaptureButton.Text = _isKeyboardCaptureEnabled ? "Pause keyboard" : "Capture keyboard";
+    }
+
+    private void UpdateMonitorOptions(IReadOnlyList<RemoteMonitorInfo> monitors)
+    {
+        _updatingMonitorOptions = true;
+
+        try
+        {
+            _clientMonitorsPanel.SuspendLayout();
+            _clientMonitorsPanel.Controls.Clear();
+
+            if (monitors.Count == 0)
+            {
+                _clientMonitorsLabel.Text = _clientService.IsConnected ? "Remote monitors: unavailable." : "Remote monitors: connect to load options.";
+                return;
+            }
+
+            _clientMonitorsLabel.Text = "Remote monitors: click another option to switch displays.";
+
+            foreach (var monitor in monitors)
+            {
+                var option = new CheckBox
+                {
+                    AutoSize = true,
+                    Checked = monitor.IsSelected,
+                    Margin = new Padding(0, 0, 8, 0),
+                    Tag = monitor.DeviceName,
+                    Text = monitor.DisplayName
+                };
+                option.CheckedChanged += MonitorOption_CheckedChanged;
+                _clientMonitorsPanel.Controls.Add(option);
+            }
+        }
+        finally
+        {
+            _clientMonitorsPanel.ResumeLayout();
+            _updatingMonitorOptions = false;
+        }
     }
 
     private void UpdateRemoteFrame(RemoteFrame frame)
@@ -502,8 +543,7 @@ public partial class DuczLocalConnectForm : Form
     {
         try
         {
-            var selectedMonitor = _hostMonitorInput.SelectedItem as MonitorChoice;
-            _hostService.Start((int)_hostPortInput.Value, _hostPinInput.Text.Trim(), selectedMonitor?.DeviceName);
+            _hostService.Start((int)_hostPortInput.Value, _hostPinInput.Text.Trim());
             UpdateActionState();
         }
         catch (Exception exception)
@@ -545,6 +585,11 @@ public partial class DuczLocalConnectForm : Form
     private void FullScreenButton_Click(object? sender, EventArgs e)
     {
         ToggleFullScreen();
+    }
+
+    private void KeyboardCaptureButton_Click(object? sender, EventArgs e)
+    {
+        SetKeyboardCapture(!_isKeyboardCaptureEnabled);
     }
 
     private async void SendClipboardButton_Click(object? sender, EventArgs e)
@@ -657,6 +702,14 @@ public partial class DuczLocalConnectForm : Form
             return;
         }
 
+        if (e.Control && e.Alt && e.KeyCode == Keys.Home && _clientService.IsConnected)
+        {
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            SetKeyboardCapture(!_isKeyboardCaptureEnabled);
+            return;
+        }
+
         if (e.KeyCode == Keys.Escape && _isFullScreen)
         {
             e.Handled = true;
@@ -701,8 +754,60 @@ public partial class DuczLocalConnectForm : Form
     private bool ShouldForwardKeyboard()
     {
         return _clientService.IsConnected
+            && _isKeyboardCaptureEnabled
             && (_isFullScreen || _mainTabs.SelectedTab == _clientTab)
             && _remoteScreen.ContainsFocus;
+    }
+
+    private void SetKeyboardCapture(bool enabled)
+    {
+        _isKeyboardCaptureEnabled = enabled && _clientService.IsConnected;
+        UpdateActionState();
+    }
+
+    private async void MonitorOption_CheckedChanged(object? sender, EventArgs e)
+    {
+        if (_updatingMonitorOptions || sender is not CheckBox option)
+        {
+            return;
+        }
+
+        if (!option.Checked)
+        {
+            if (_clientMonitorsPanel.Controls.OfType<CheckBox>().All(checkBox => !checkBox.Checked))
+            {
+                _updatingMonitorOptions = true;
+                option.Checked = true;
+                _updatingMonitorOptions = false;
+            }
+
+            return;
+        }
+
+        var selectedDeviceName = option.Tag as string;
+        if (string.IsNullOrWhiteSpace(selectedDeviceName))
+        {
+            return;
+        }
+
+        _updatingMonitorOptions = true;
+        foreach (var otherOption in _clientMonitorsPanel.Controls.OfType<CheckBox>())
+        {
+            if (!ReferenceEquals(otherOption, option))
+            {
+                otherOption.Checked = false;
+            }
+        }
+        _updatingMonitorOptions = false;
+
+        try
+        {
+            await _clientService.SelectMonitorAsync(selectedDeviceName);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this, exception.Message, "Failed to change monitor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private Point? TranslateClientPoint(Point localPoint)
@@ -852,6 +957,7 @@ public partial class DuczLocalConnectForm : Form
         TopMost = true;
         _isFullScreen = true;
         _remoteScreen.Focus();
+        SetKeyboardCapture(true);
         UpdateActionState();
     }
 
@@ -874,15 +980,5 @@ public partial class DuczLocalConnectForm : Form
         _isFullScreen = false;
         _remoteScreen.Focus();
         UpdateActionState();
-    }
-
-    private sealed class MonitorChoice(string deviceName, string displayName)
-    {
-        public string DeviceName { get; } = deviceName;
-
-        public override string ToString()
-        {
-            return displayName;
-        }
     }
 }

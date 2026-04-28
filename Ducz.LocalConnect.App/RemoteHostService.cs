@@ -11,17 +11,19 @@ internal sealed class RemoteHostService
 
     private readonly RemoteAudioHostService _audioService = new();
     private readonly ScreenDiffEncoder _screenDiffEncoder = new();
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
 
     private TcpListener? _listener;
     private CancellationTokenSource? _lifetimeCancellation;
     private Task? _acceptLoopTask;
     private string _accessPin = "123456";
+    private string? _currentScreenDeviceName;
 
     public bool IsRunning => _listener is not null;
 
     public event Action<string>? StatusChanged;
 
-    public void Start(int port, string accessPin, string? screenDeviceName)
+    public void Start(int port, string accessPin)
     {
         if (_listener is not null)
         {
@@ -29,7 +31,8 @@ internal sealed class RemoteHostService
         }
 
         _accessPin = string.IsNullOrWhiteSpace(accessPin) ? "123456" : accessPin.Trim();
-        _screenDiffEncoder.SetScreen(screenDeviceName);
+        _currentScreenDeviceName = null;
+        _screenDiffEncoder.SetScreen(null);
         _lifetimeCancellation = new CancellationTokenSource();
         _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
@@ -150,6 +153,11 @@ internal sealed class RemoteHostService
 
         var valid = string.Equals(authPacket.Pin, _accessPin, StringComparison.Ordinal);
         await RemoteProtocol.WriteAuthResultAsync(stream, valid, valid ? "Authenticated." : "Invalid PIN.", cancellationToken);
+        if (valid)
+        {
+            await RemoteProtocol.WriteMonitorListAsync(stream, GetAvailableMonitors(), cancellationToken);
+        }
+
         return valid;
     }
 
@@ -160,7 +168,7 @@ internal sealed class RemoteHostService
             var frame = _screenDiffEncoder.CaptureNextFrame();
             if (frame is not null)
             {
-                await RemoteProtocol.WriteFrameAsync(stream, frame, cancellationToken);
+                await SendAsync(stream, (networkStream, token) => RemoteProtocol.WriteFrameAsync(networkStream, frame, token), cancellationToken);
             }
 
             await Task.Delay(FrameIntervalMilliseconds, cancellationToken);
@@ -189,7 +197,12 @@ internal sealed class RemoteHostService
                         StatusChanged?.Invoke("Clipboard updated by the client.");
                         break;
                     case ClipboardRequestClientPacket:
-                        await RemoteProtocol.WriteClipboardResponseAsync(stream, WindowsClipboard.GetText(), cancellationToken);
+                        await SendAsync(stream, (networkStream, token) => RemoteProtocol.WriteClipboardResponseAsync(networkStream, WindowsClipboard.GetText(), token), cancellationToken);
+                        break;
+                    case MonitorSelectClientPacket monitorPacket:
+                        var changedMonitor = SetSelectedScreen(monitorPacket.DeviceName);
+                        await SendAsync(stream, (networkStream, token) => RemoteProtocol.WriteMonitorListAsync(networkStream, GetAvailableMonitors(), token), cancellationToken);
+                        StatusChanged?.Invoke($"Shared monitor changed to {changedMonitor}.");
                         break;
                     case FileMetadataClientPacket fileMetadataPacket:
                         fileStream?.Dispose();
@@ -237,6 +250,56 @@ internal sealed class RemoteHostService
     {
         var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Ducz LocalConnect Received Files");
         return Path.Combine(directory, Path.GetFileName(fileName));
+    }
+
+    private string SetSelectedScreen(string? deviceName)
+    {
+        var selectedScreen = Screen.AllScreens.FirstOrDefault(screen => string.Equals(screen.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase))
+            ?? Screen.AllScreens.FirstOrDefault(screen => screen.Primary)
+            ?? Screen.AllScreens.First();
+
+        _currentScreenDeviceName = selectedScreen.DeviceName;
+        _screenDiffEncoder.SetScreen(_currentScreenDeviceName);
+        return BuildMonitorDisplayName(selectedScreen, Array.IndexOf(Screen.AllScreens, selectedScreen));
+    }
+
+    private IReadOnlyList<RemoteMonitorInfo> GetAvailableMonitors()
+    {
+        var screens = Screen.AllScreens;
+        var selectedDeviceName = _currentScreenDeviceName;
+        return screens
+            .Select((screen, index) => new RemoteMonitorInfo(
+                screen.DeviceName,
+                BuildMonitorDisplayName(screen, index),
+                screen.Primary,
+                string.Equals(screen.DeviceName, selectedDeviceName, StringComparison.OrdinalIgnoreCase)
+                    || (selectedDeviceName is null && screen.Primary)))
+            .ToArray();
+    }
+
+    private static string BuildMonitorDisplayName(Screen screen, int index)
+    {
+        var primarySuffix = screen.Primary ? " (Primary)" : string.Empty;
+        return $"Monitor {index + 1}: {screen.Bounds.Width}x{screen.Bounds.Height} at {screen.Bounds.X},{screen.Bounds.Y}{primarySuffix}";
+    }
+
+    private async Task SendAsync(NetworkStream stream, Func<NetworkStream, CancellationToken, Task> sendOperation, CancellationToken cancellationToken)
+    {
+        var lockAcquired = false;
+
+        try
+        {
+            await _sendLock.WaitAsync(cancellationToken);
+            lockAcquired = true;
+            await sendOperation(stream, cancellationToken);
+        }
+        finally
+        {
+            if (lockAcquired)
+            {
+                _sendLock.Release();
+            }
+        }
     }
 
     private void HandleAudioStatusChanged(string message)

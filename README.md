@@ -10,7 +10,7 @@ It provides a lightweight host/client workflow focused on LAN usage, with screen
 - Host/client connection over local network
 - PIN authentication before the session starts
 - Remote screen streaming with differential frame updates
-- Host-side monitor selection for multi-display setups
+- Client-side monitor switching for multi-display hosts
 - Remote mouse and keyboard control
 - Remote system audio playback on the client
 - Full screen mode with `F11` and `Esc`
@@ -31,11 +31,10 @@ It provides a lightweight host/client workflow focused on LAN usage, with screen
 
 1. Open the `Host` tab.
 2. Confirm the port. The default is `5050`.
-3. Choose which monitor to share when the host has multiple displays.
-4. Set the session PIN.
-5. Click `Start host`.
-6. Share the displayed local IP address with the client.
-7. Audio is published automatically on the next port. Example: video on `5050`, audio on `5051`.
+3. Set the session PIN.
+4. Click `Start host`.
+5. Share the displayed local IP address with the client.
+6. Audio is published automatically on the next port. Example: video on `5050`, audio on `5051`.
 
 ### Client
 
@@ -43,9 +42,12 @@ It provides a lightweight host/client workflow focused on LAN usage, with screen
 2. Enter the host IP and the same base port.
 3. Enter the same PIN configured on the host.
 4. Click `Connect`.
-5. Click the remote image to capture mouse and keyboard input.
-6. Use `F11` to enter full screen and `Esc` to exit.
-7. Use `Send clipboard`, `Fetch remote clipboard`, and `Send file` when needed.
+5. Use the monitor options shown after connecting to choose which remote display to view.
+6. Click the remote image or use `Capture keyboard` to send keystrokes to the host.
+7. Use `Ctrl` + `Alt` + `Home` to pause or resume keyboard capture.
+8. While keyboard capture is paused, local shortcuts such as `Alt` + `Tab` stay on your own computer.
+9. Use `F11` to enter full screen and `Esc` to exit.
+10. Use `Send clipboard`, `Fetch remote clipboard`, and `Send file` when needed.
 
 ## Performance Notes
 

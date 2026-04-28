@@ -12,6 +12,7 @@ internal sealed class RemoteClientService
     private NetworkStream? _stream;
     private CancellationTokenSource? _lifetimeCancellation;
     private Task? _receiveLoopTask;
+    private IReadOnlyList<RemoteMonitorInfo> _availableMonitors = Array.Empty<RemoteMonitorInfo>();
 
     public bool IsConnected => _client?.Connected == true && _stream is not null;
 
@@ -20,6 +21,8 @@ internal sealed class RemoteClientService
     public event Action<RemoteFrame>? FrameReceived;
 
     public event Action<bool>? ConnectionChanged;
+
+    public event Action<IReadOnlyList<RemoteMonitorInfo>>? MonitorsChanged;
 
     public async Task ConnectAsync(string host, int port, string pin)
     {
@@ -49,6 +52,13 @@ internal sealed class RemoteClientService
             throw new InvalidOperationException(authPacket is AuthResultServerPacket result ? result.Message : "Authentication failed.");
         }
 
+        var monitorPacket = await RemoteProtocol.ReadServerPacketAsync(stream, CancellationToken.None);
+        if (monitorPacket is not MonitorListServerPacket monitorListPacket)
+        {
+            client.Dispose();
+            throw new InvalidOperationException("The host did not provide the monitor list.");
+        }
+
         try
         {
             await _audioService.ConnectAsync(host, port + AudioPortOffset);
@@ -56,6 +66,7 @@ internal sealed class RemoteClientService
             _client = client;
             _stream = stream;
             _lifetimeCancellation = new CancellationTokenSource();
+            _availableMonitors = monitorListPacket.Monitors;
             _receiveLoopTask = ReceiveServerPacketsLoopAsync(_stream, _lifetimeCancellation.Token);
         }
         catch
@@ -67,6 +78,7 @@ internal sealed class RemoteClientService
 
         StatusChanged?.Invoke($"Connected to {host}:{port}, audio on port {port + AudioPortOffset}.");
         ConnectionChanged?.Invoke(true);
+        MonitorsChanged?.Invoke(_availableMonitors);
     }
 
     public Task DisconnectAsync()
@@ -145,6 +157,11 @@ internal sealed class RemoteClientService
         }
     }
 
+    public Task SelectMonitorAsync(string deviceName)
+    {
+        return SendAsync((stream, cancellationToken) => RemoteProtocol.WriteMonitorSelectAsync(stream, deviceName, cancellationToken));
+    }
+
     private async Task DisconnectAsync(bool waitForReceiveLoop)
     {
         var client = _client;
@@ -181,8 +198,10 @@ internal sealed class RemoteClientService
             stream?.Dispose();
             client.Dispose();
             lifetimeCancellation?.Dispose();
+            _availableMonitors = Array.Empty<RemoteMonitorInfo>();
             StatusChanged?.Invoke("Client disconnected.");
             ConnectionChanged?.Invoke(false);
+            MonitorsChanged?.Invoke(_availableMonitors);
         }
     }
 
@@ -201,6 +220,10 @@ internal sealed class RemoteClientService
                     case ClipboardResponseServerPacket clipboardPacket:
                         WindowsClipboard.SetText(clipboardPacket.Text);
                         StatusChanged?.Invoke("Remote clipboard copied to this computer.");
+                        break;
+                    case MonitorListServerPacket monitorListPacket:
+                        _availableMonitors = monitorListPacket.Monitors;
+                        MonitorsChanged?.Invoke(_availableMonitors);
                         break;
                 }
             }

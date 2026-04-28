@@ -17,7 +17,9 @@ internal enum PacketType : byte
     ClipboardRequest = 11,
     ClipboardResponse = 12,
     FileMetadata = 13,
-    FileChunk = 14
+    FileChunk = 14,
+    MonitorSelect = 15,
+    MonitorList = 16
 }
 
 internal enum RemoteMouseButton : byte
@@ -44,6 +46,7 @@ internal sealed record RemoteFrame(
     byte[] ImageBytes);
 
 internal sealed record RemoteInputMessage(PacketType Type, int X = 0, int Y = 0, int Delta = 0, int KeyCode = 0, RemoteMouseButton Button = RemoteMouseButton.Left);
+internal sealed record RemoteMonitorInfo(string DeviceName, string DisplayName, bool IsPrimary, bool IsSelected);
 
 internal abstract record ClientPacket(PacketType Type);
 internal sealed record InputClientPacket(RemoteInputMessage Input) : ClientPacket(Input.Type);
@@ -52,11 +55,13 @@ internal sealed record ClipboardSetClientPacket(string Text) : ClientPacket(Pack
 internal sealed record ClipboardRequestClientPacket() : ClientPacket(PacketType.ClipboardRequest);
 internal sealed record FileMetadataClientPacket(string FileName, long FileSize) : ClientPacket(PacketType.FileMetadata);
 internal sealed record FileChunkClientPacket(byte[] Content) : ClientPacket(PacketType.FileChunk);
+internal sealed record MonitorSelectClientPacket(string DeviceName) : ClientPacket(PacketType.MonitorSelect);
 
 internal abstract record ServerPacket(PacketType Type);
 internal sealed record FrameServerPacket(RemoteFrame Frame) : ServerPacket(PacketType.Frame);
 internal sealed record AuthResultServerPacket(bool Success, string Message) : ServerPacket(PacketType.AuthResult);
 internal sealed record ClipboardResponseServerPacket(string Text) : ServerPacket(PacketType.ClipboardResponse);
+internal sealed record MonitorListServerPacket(IReadOnlyList<RemoteMonitorInfo> Monitors) : ServerPacket(PacketType.MonitorList);
 
 internal static class RemoteProtocol
 {
@@ -153,6 +158,27 @@ internal static class RemoteProtocol
         await WriteBufferAsync(stream, content.AsMemory(0, count), cancellationToken);
     }
 
+    public static Task WriteMonitorSelectAsync(Stream stream, string deviceName, CancellationToken cancellationToken)
+    {
+        return WriteStringPacketAsync(stream, PacketType.MonitorSelect, deviceName, cancellationToken);
+    }
+
+    public static async Task WriteMonitorListAsync(Stream stream, IReadOnlyList<RemoteMonitorInfo> monitors, CancellationToken cancellationToken)
+    {
+        await stream.WriteAsync(new[] { (byte)PacketType.MonitorList }, cancellationToken);
+
+        var countBuffer = new byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(countBuffer, monitors.Count);
+        await stream.WriteAsync(countBuffer, cancellationToken);
+
+        foreach (var monitor in monitors)
+        {
+            await WriteStringAsync(stream, monitor.DeviceName, cancellationToken);
+            await WriteStringAsync(stream, monitor.DisplayName, cancellationToken);
+            await stream.WriteAsync(new[] { monitor.IsPrimary ? (byte)1 : (byte)0, monitor.IsSelected ? (byte)1 : (byte)0 }, cancellationToken);
+        }
+    }
+
     public static async Task<ClientPacket> ReadClientPacketAsync(Stream stream, CancellationToken cancellationToken)
     {
         var packetType = await ReadPacketTypeAsync(stream, cancellationToken);
@@ -167,6 +193,7 @@ internal static class RemoteProtocol
             PacketType.ClipboardRequest => new ClipboardRequestClientPacket(),
             PacketType.FileMetadata => await ReadFileMetadataAsync(stream, cancellationToken),
             PacketType.FileChunk => new FileChunkClientPacket(await ReadBufferAsync(stream, cancellationToken)),
+            PacketType.MonitorSelect => new MonitorSelectClientPacket(await ReadStringAsync(stream, cancellationToken)),
             _ => throw new InvalidDataException($"Unknown client packet: {packetType}.")
         };
     }
@@ -179,8 +206,26 @@ internal static class RemoteProtocol
             PacketType.Frame => new FrameServerPacket(await ReadFrameBodyAsync(stream, cancellationToken)),
             PacketType.AuthResult => await ReadAuthResultAsync(stream, cancellationToken),
             PacketType.ClipboardResponse => new ClipboardResponseServerPacket(await ReadStringAsync(stream, cancellationToken)),
-            _ => throw new InvalidDataException($"Pacote do servidor desconhecido: {packetType}.")
+            PacketType.MonitorList => new MonitorListServerPacket(await ReadMonitorListAsync(stream, cancellationToken)),
+            _ => throw new InvalidDataException($"Unknown server packet: {packetType}.")
         };
+    }
+
+    private static async Task<IReadOnlyList<RemoteMonitorInfo>> ReadMonitorListAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var countBuffer = await ReadExactAsync(stream, 4, cancellationToken);
+        var count = BinaryPrimitives.ReadInt32LittleEndian(countBuffer);
+        var monitors = new List<RemoteMonitorInfo>(count);
+
+        for (var index = 0; index < count; index++)
+        {
+            var deviceName = await ReadStringAsync(stream, cancellationToken);
+            var displayName = await ReadStringAsync(stream, cancellationToken);
+            var flags = await ReadExactAsync(stream, 2, cancellationToken);
+            monitors.Add(new RemoteMonitorInfo(deviceName, displayName, flags[0] == 1, flags[1] == 1));
+        }
+
+        return monitors;
     }
 
     private static async Task<RemoteFrame> ReadFrameBodyAsync(Stream stream, CancellationToken cancellationToken)
