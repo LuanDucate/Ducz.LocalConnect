@@ -1,76 +1,151 @@
-# Ducz LocalConnect
+<div align="center">
+  <img src="src/Branding/ducz-logo.png" width="240" alt="Ducz LocalConnect">
+</div>
 
-Ducz LocalConnect is a simple Windows desktop application for remote access between two computers on the same local network.
+<h1 align="center">Ducz LocalConnect</h1>
 
-It provides a lightweight host/client workflow focused on LAN usage, with screen streaming, remote mouse and keyboard input, remote audio playback, PIN-based authentication, clipboard transfer, and one-way file transfer from client to host.
+<p align="center">
+  Remote desktop for two computers on the same local network.<br>
+  Screen, audio, mouse, keyboard, clipboard and files - no account, no cloud, no relay.
+</p>
 
-## Features
+<p align="center">
+  <a href="https://github.com/LuanDucate/Ducz.LocalConnect/releases/latest"><img src="https://img.shields.io/github/v/release/LuanDucate/Ducz.LocalConnect?display_name=tag" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white" alt=".NET 10">
+  <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white" alt="Windows">
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
+</p>
 
-- Windows desktop app built with .NET 10 and WinForms
-- Host/client connection over local network
-- PIN authentication before the session starts
-- Remote screen streaming with differential frame updates
-- Client-side monitor switching for multi-display hosts
-- Remote mouse and keyboard control
-- Remote system audio playback on the client
-- Full screen mode with `F11` and `Esc`
-- Manual clipboard sync between client and host
-- Manual file transfer from client to host
-- App icon and branded UI
+<p align="center">
+  <img src="docs/screenshots/session.png" width="900" alt="A live, pinned session controlling another PC">
+</p>
 
-## Requirements
+## What it does
 
-- Windows 10 or Windows 11
-- .NET 10 SDK for development
-- No external server required
-- Both computers must be on the same LAN
+One computer runs as the **host** and shares its screen; another connects as the **client** and
+controls it. Everything travels directly between the two machines over TCP.
 
-## Quick Start
+- **Screen streaming** with differential frames - a static desktop costs nothing, a cursor move costs a
+  tiny patch
+- **Multi-monitor**: the client picks which of the host's displays to view
+- **Remote mouse and keyboard**, with a toggle (`Ctrl+Alt+Home`) to keep shortcuts like `Alt+Tab` local
+- **Full screen that feels local**: the Windows key, `Alt+Tab` and every other shortcut go to the
+  remote computer; a control bar slides in from the top edge; a button sends `Ctrl+Alt+Del`
+- **Multiple sessions at once** - connect to several computers; each gets its own renameable entry in
+  the sidebar. The one you're watching streams; the rest sit paused and muted until you click them,
+  then resume instantly. Ideal for hopping between machines on your desk
+- **Pin your computers** - keep a connection in the sidebar so it stays one click away to reconnect,
+  even after disconnecting. Pin by computer name and it survives the host getting a new IP
+- **Start the host with Windows** - optionally launch at login and start hosting (with your PIN),
+  minimized to the notification area
+- **Quality presets** - *Sharp* keeps text pixel-perfect on a wired LAN, *Balanced* suits Wi-Fi
+- **System audio** from the host, on a dedicated channel so it never waits behind a video frame
+- **Clipboard** in both directions and **file transfer** to the host, on demand
+- **PIN** before anything is shown, one client at a time, liveness checks that notice a dead peer in
+  seconds, notifications when a client connects or leaves
+- Fluent, Windows 11-style UI with light and dark themes; minimizes to the notification area
 
-### Host
+<table>
+  <tr>
+    <td><img src="docs/screenshots/host.png" alt="Host page"></td>
+    <td><img src="docs/screenshots/connect.png" alt="Connect page"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Host</b> - share this PC, with a PIN and start-with-Windows</td>
+    <td align="center"><b>Connect</b> - reach another PC on the LAN</td>
+  </tr>
+</table>
 
-1. Open the `Host` tab.
-2. Confirm the port. The default is `5050`.
-3. Set the session PIN.
-4. Click `Start host`.
-5. Share the displayed local IP address with the client.
-6. Audio is published automatically on the next port. Example: video on `5050`, audio on `5051`.
+## Quick start
 
-### Client
+Download `DuczLocalConnect-Setup-x.y.z.exe` from the
+[latest release](https://github.com/LuanDucate/Ducz.LocalConnect/releases/latest) and install it on
+both computers. No .NET runtime needed.
 
-1. Open the `Client` tab.
-2. Enter the host IP and the same base port.
-3. Enter the same PIN configured on the host.
-4. Click `Connect`.
-5. Use the monitor options shown after connecting to choose which remote display to view.
-6. Click the remote image or use `Capture keyboard` to send keystrokes to the host.
-7. Use `Ctrl` + `Alt` + `Home` to pause or resume keyboard capture.
-8. While keyboard capture is paused, local shortcuts such as `Alt` + `Tab` stay on your own computer.
-9. Use `F11` to enter full screen and `Esc` to exit.
-10. Use `Send clipboard`, `Fetch remote clipboard`, and `Send file` when needed.
+**On the computer you want to control (host)**
 
-## Performance Notes
+1. Open the **Host** page. Keep the default port `5050` or pick another.
+2. Note the **PIN** (or generate a new one) and click **Start host**.
+3. Tell the other person one of the addresses listed and the PIN.
 
-The app now uses differential frame updates instead of sending a full screen image every cycle. That reduces bandwidth and improves responsiveness, especially for cursor movement and text entry.
+**On the computer you are sitting at (client)**
 
-If you still see delay on the client:
+1. Open the **Connect** page, enter the host's address, port and PIN, click **Connect**.
+2. You are now looking at the remote screen. Click it to start controlling.
+3. Use the toolbar to switch monitors, go full screen, move the clipboard, send a file or mute audio.
 
-- Prefer wired Ethernet over Wi-Fi
-- Use the application on a fast local network only
-- Avoid very high-resolution displays when possible
-- Close GPU-heavy or video-heavy applications on the host
-- Keep both machines on the same switch or access point
+The first time the host starts, Windows asks to allow the app through the firewall - say yes for
+private networks. See [troubleshooting](docs/troubleshooting.md) if the client can't connect.
 
-## Security Notes
+## How it works
 
-This project is currently intended for trusted local networks.
+```
+   host                                                    client
+   ┌──────────────┐  JPEG full/delta frames  ┌──────────────────┐
+   │ GDI capture  │ ───────────────────────▶ │ WriteableBitmap  │
+   │ diff encoder │ ◀─────────────────────── │ mouse / keyboard │  TCP :port
+   │ SendInput    │  input, clipboard, files │ clipboard, files │
+   ├──────────────┤                          ├──────────────────┤
+   │ WASAPI       │ ───────────────────────▶ │ WaveOut          │  TCP :port+1
+   │ loopback     │       PCM chunks         │                  │
+   └──────────────┘                          └──────────────────┘
+```
 
-Current limitations:
+- A small **binary protocol** with a magic + version handshake and hard size limits on every field, so
+  a bad peer can't make the app allocate arbitrary memory - [docs/protocol.md](docs/protocol.md)
+- The capture loop **blocks on each send**: that single choice is the flow control. A slow link lowers
+  the frame rate instead of growing a queue
+- The audio engine's callback thread only ever copies bytes into a bounded channel; a separate task
+  talks to the network. (This is what used to freeze the host in v1)
+- Frames are decoded on the network thread and blitted into one long-lived bitmap on the UI thread
 
-- No transport encryption yet
-- No device discovery yet
-- File transfer is client-to-host only
+Read more in [docs/architecture.md](docs/architecture.md).
+
+## Building from source
+
+Requirements: Windows 10/11, [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+```powershell
+git clone https://github.com/LuanDucate/Ducz.LocalConnect.git
+cd Ducz.LocalConnect
+dotnet build Ducz.LocalConnect.slnx
+dotnet test
+dotnet run --project src\Ducz.LocalConnect.App
+```
+
+To build the installer you also need [Inno Setup 6](https://jrsoftware.org/isinfo.php):
+
+```powershell
+.\scripts\build-installer.ps1 -Version 1.0.1
+```
+
+Warnings are errors, and the CI runs the same build and tests on every push.
+
+## Repository layout
+
+```
+src/Ducz.LocalConnect.Core/    protocol, capture, audio, input, clipboard, transfer, sessions (no UI)
+src/Ducz.LocalConnect.App/     WPF app: views, view-models, RemoteScreenView, settings
+src/Branding/                  logo and icon
+tests/                         xUnit tests for the core (protocol round-trips, limits, encoder, handshake)
+docs/                          architecture, protocol, releasing, troubleshooting, screenshots
+installer/ · scripts/          Inno Setup script and the publish + package script
+.github/workflows/             CI (build + test) and release (installer attached to GitHub releases)
+```
+
+## Security
+
+This is a **trusted-LAN** tool: the PIN gates the session, but the stream is not encrypted and the
+client gets the host's privileges. Don't expose the ports to the internet. Details and the roadmap for
+TLS are in [docs/architecture.md](docs/architecture.md#security-posture).
+
+## Roadmap
+
+- TLS transport with certificate fingerprint verification
+- DXGI Desktop Duplication capture (lower host CPU)
+- Host discovery on the LAN
+- Bidirectional file transfer, cursor shape streaming
 
 ## License
 
-See [LICENSE.txt](LICENSE.txt).
+[MIT](LICENSE.txt) © Luan Michel Ducate

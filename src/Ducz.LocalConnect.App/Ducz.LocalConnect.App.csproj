@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <!-- Only for System.Windows.Forms.NotifyIcon (tray icon); no WinForms UI. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WFO0003 wants DPI configured the WinForms way; this is a WPF app and the manifest is the right place. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+    <RootNamespace>Ducz.LocalConnect.App</RootNamespace>
+    <AssemblyName>Ducz.LocalConnect.App</AssemblyName>
+    <ApplicationIcon>..\Branding\favicon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Description>Fluent desktop client for Ducz LocalConnect.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The WinForms SDK adds these as global usings; they clash with WPF's types everywhere. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ducz.LocalConnect.Core\Ducz.LocalConnect.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\Branding\logo-256.png" Link="Assets\logo.png" />
+    <Resource Include="..\Branding\favicon.ico" Link="Assets\app.ico" />
+  </ItemGroup>
+
+</Project>

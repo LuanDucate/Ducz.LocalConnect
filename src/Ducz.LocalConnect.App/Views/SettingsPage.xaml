@@ -1,0 +1,118 @@
+<Page
+  x:Class="Ducz.LocalConnect.App.Views.SettingsPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  xmlns:vm="clr-namespace:Ducz.LocalConnect.App.ViewModels"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  mc:Ignorable="d"
+  d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
+  Title="Settings">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32,24,32,32" MaxWidth="720" HorizontalAlignment="Left">
+      <TextBlock Style="{StaticResource PageTitle}" Text="Settings" />
+      <TextBlock Margin="0,4,0,20" Style="{StaticResource PageSubtitle}" Text="Changes are saved immediately." />
+
+      <ui:Card Style="{StaticResource SectionCard}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource SectionTitle}" Text="Appearance" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock FontSize="14" Text="Theme" />
+              <TextBlock Style="{StaticResource Muted}" Text="System follows your Windows setting." />
+            </StackPanel>
+            <ComboBox
+              Grid.Column="1"
+              MinWidth="160"
+              ItemsSource="{Binding Themes}"
+              SelectedItem="{Binding Theme, Mode=TwoWay}" />
+          </Grid>
+          <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock FontSize="14" Text="Minimize to the notification area" />
+              <TextBlock Style="{StaticResource Muted}" Text="Minimizing hides the window next to the clock instead of the taskbar. Double-click the icon to bring it back." />
+            </StackPanel>
+            <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding MinimizeToTray, Mode=TwoWay}" />
+          </Grid>
+        </StackPanel>
+      </ui:Card>
+
+      <ui:Card Style="{StaticResource SectionCard}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource SectionTitle}" Text="Host" />
+          <Grid Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock FontSize="14" Text="Default port" />
+              <TextBlock Style="{StaticResource Muted}" Text="Audio always uses the next port number." />
+            </StackPanel>
+            <ui:NumberBox
+              Grid.Column="1"
+              MinWidth="160"
+              ClearButtonEnabled="False"
+              Maximum="{Binding MaxPort}"
+              Minimum="{Binding MinPort}"
+              SpinButtonPlacementMode="Inline"
+              Value="{Binding DefaultPort, Mode=TwoWay, Converter={StaticResource IntToDouble}}" />
+          </Grid>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock FontSize="14" Text="Start hosting when the app opens" />
+              <TextBlock Style="{StaticResource Muted}" Text="Handy on the computer you always connect to." />
+            </StackPanel>
+            <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding StartHostOnLaunch, Mode=TwoWay}" />
+          </Grid>
+        </StackPanel>
+      </ui:Card>
+
+      <ui:Card Style="{StaticResource SectionCard}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource SectionTitle}" Text="Received files" />
+          <TextBlock Style="{StaticResource FieldLabel}" Text="Files sent by a client are saved to" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="8" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="4" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ui:TextBox IsReadOnly="True" Text="{Binding ReceivedFilesDirectory, Mode=OneWay}" />
+            <ui:Button
+              Grid.Column="2"
+              Command="{Binding BrowseReceivedFilesDirectoryCommand}"
+              Content="Browse"
+              Icon="{ui:SymbolIcon FolderOpen24}" />
+            <ui:Button
+              Grid.Column="4"
+              Appearance="Transparent"
+              Command="{Binding ResetReceivedFilesDirectoryCommand}"
+              Icon="{ui:SymbolIcon ArrowClockwise24}"
+              ToolTip="Reset to the default desktop folder" />
+          </Grid>
+        </StackPanel>
+      </ui:Card>
+
+      <TextBlock Style="{StaticResource Muted}">
+        <Run Text="Settings file: " /><Run FontFamily="Consolas" Text="{Binding SettingsFilePath, Mode=OneWay}" />
+      </TextBlock>
+    </StackPanel>
+  </ScrollViewer>
+</Page>

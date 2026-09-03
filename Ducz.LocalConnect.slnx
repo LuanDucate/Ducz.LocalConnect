@@ -1,3 +1,9 @@
 <Solution>
-  <Project Path="Ducz.LocalConnect.App/Ducz.LocalConnect.App.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/Ducz.LocalConnect.Core/Ducz.LocalConnect.Core.csproj" />
+    <Project Path="src/Ducz.LocalConnect.App/Ducz.LocalConnect.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ducz.LocalConnect.Core.Tests/Ducz.LocalConnect.Core.Tests.csproj" />
+  </Folder>
 </Solution>
