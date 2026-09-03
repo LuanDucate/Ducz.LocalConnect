@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ducz LocalConnect - LAN remote desktop for Windows</title>
+
+  <meta name="description" content="Ducz LocalConnect is a free, open-source remote desktop for two Windows PCs on the same local network. Screen, audio, mouse, keyboard, clipboard and file transfer - no account, no cloud, no relay servers. A self-hosted AnyDesk/TeamViewer-style tool for your LAN." />
+  <meta name="keywords" content="remote desktop, LAN remote desktop, AnyDesk alternative, TeamViewer alternative, RDP alternative, open source remote desktop, self-hosted remote desktop, remote control, screen sharing, Windows remote desktop, no cloud, free remote desktop, .NET, WPF, Ducz LocalConnect" />
+  <meta name="author" content="Luan Michel Ducate" />
+  <meta name="theme-color" content="#0e0f13" />
+  <link rel="icon" href="favicon.ico" />
+  <link rel="canonical" href="https://luanducate.github.io/Ducz.LocalConnect/" />
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Ducz LocalConnect - LAN remote desktop for Windows" />
+  <meta property="og:description" content="Free, open-source remote desktop for two Windows PCs on the same local network. Screen, audio, input, clipboard and files - no account, no cloud, no relay." />
+  <meta property="og:url" content="https://luanducate.github.io/Ducz.LocalConnect/" />
+  <meta property="og:image" content="https://luanducate.github.io/Ducz.LocalConnect/screenshots/session.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Ducz LocalConnect - LAN remote desktop for Windows" />
+  <meta name="twitter:description" content="Free, open-source, self-hosted remote desktop for your local network. An AnyDesk-style tool that never leaves your LAN." />
+  <meta name="twitter:image" content="https://luanducate.github.io/Ducz.LocalConnect/screenshots/session.png" />
+
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --bg-2: #101218;
+      --panel: #14161d;
+      --panel-2: #191c25;
+      --stroke: #262a35;
+      --text: #eef0f4;
+      --muted: #9aa1af;
+      --faint: #6b7280;
+      --accent: #f6a21a;      /* duck beak orange */
+      --accent-2: #ffbf4d;
+      --radius: 16px;
+      --maxw: 1100px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 50% -200px, #1b1f2b 0%, var(--bg) 60%) no-repeat, var(--bg);
+      color: var(--text);
+      font: 16px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+    /* Nav */
+    header.nav {
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: blur(10px);
+      background: rgba(11,12,16,.72);
+      border-bottom: 1px solid var(--stroke);
+    }
+    .nav-inner { display: flex; align-items: center; gap: 16px; height: 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
+    .brand img { height: 30px; width: 30px; border-radius: 8px; }
+    .nav-links { margin-left: auto; display: flex; gap: 22px; align-items: center; }
+    .nav-links a { color: var(--muted); font-size: 14px; }
+    .nav-links a:hover { color: var(--text); }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px;
+      border: 1px solid var(--stroke); background: var(--panel-2); color: var(--text);
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+    }
+    .btn:hover { transform: translateY(-1px); border-color: #3a4050; }
+    .btn.primary { background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #201700; border: none; }
+    .btn.primary:hover { filter: brightness(1.05); }
+
+    /* Hero */
+    .hero { text-align: center; padding: 72px 0 24px; }
+    .hero img.logo { width: 220px; max-width: 70%; height: auto; }
+    .hero h1 { font-size: clamp(30px, 5vw, 52px); margin: 22px 0 8px; letter-spacing: -.5px; }
+    .hero p.tag { color: var(--muted); font-size: clamp(15px, 2.4vw, 19px); max-width: 640px; margin: 0 auto; }
+    .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+    .pill { display:inline-block; margin-top: 22px; color: var(--faint); font-size: 13px; }
+    .pill b { color: var(--muted); font-weight: 600; }
+
+    .shot { margin: 34px auto 0; }
+    .shot img { width: 100%; height: auto; border-radius: var(--radius); border: 1px solid var(--stroke); box-shadow: 0 30px 80px -30px rgba(0,0,0,.8); display:block; }
+
+    section { padding: 56px 0; }
+    .section-title { text-align: center; margin: 0 0 8px; font-size: clamp(24px, 3.5vw, 34px); }
+    .section-sub { text-align: center; color: var(--muted); margin: 0 auto 36px; max-width: 620px; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius); padding: 22px; }
+    .card:hover { border-color: #343a48; }
+    .card .ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: rgba(246,162,26,.12); color: var(--accent-2); margin-bottom: 14px; font-size: 20px; }
+    .card h3 { margin: 0 0 6px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .two figure { margin: 0; }
+    .two img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--stroke); display:block; }
+    .two figcaption { color: var(--muted); font-size: 13px; text-align: center; margin-top: 10px; }
+
+    .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .step { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius); padding: 24px; }
+    .step h3 { margin: 0 0 12px; display:flex; align-items:center; gap:10px; }
+    .step ol { margin: 0; padding-left: 20px; color: var(--muted); }
+    .step ol li { margin: 6px 0; }
+    .step .badge { font-size: 12px; font-weight: 700; color: var(--accent-2); background: rgba(246,162,26,.12); padding: 3px 9px; border-radius: 999px; }
+
+    .note { text-align:center; color: var(--faint); font-size: 13px; margin-top: 18px; }
+
+    footer { border-top: 1px solid var(--stroke); padding: 44px 0 60px; margin-top: 20px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 8px 0 26px; }
+    .tags span { font-size: 12px; color: var(--muted); border: 1px solid var(--stroke); background: var(--panel); padding: 5px 11px; border-radius: 999px; }
+    .foot-row { display:flex; justify-content: space-between; align-items:center; gap:16px; flex-wrap: wrap; color: var(--faint); font-size: 13px; }
+    .foot-row a { color: var(--muted); }
+    .foot-row a:hover { color: var(--text); }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      .two, .steps { grid-template-columns: 1fr; }
+      .nav-links a:not(.btn) { display: none; }
+    }
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top"><img src="logo-256.png" alt="" /> Ducz&nbsp;LocalConnect</a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#start">Quick start</a>
+        <a href="https://github.com/LuanDucate/Ducz.LocalConnect">GitHub</a>
+        <a class="btn primary" href="https://github.com/LuanDucate/Ducz.LocalConnect/releases/latest">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <a id="top"></a>
+  <div class="wrap hero">
+    <img class="logo" src="ducz-logo.png" alt="Ducz LocalConnect logo" />
+    <h1>Remote desktop for your local network</h1>
+    <p class="tag">Control another Windows PC on the same network - screen, audio, mouse, keyboard,
+      clipboard and files. No account, no cloud, no relay servers. Everything stays on your LAN.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/LuanDucate/Ducz.LocalConnect/releases/latest">⬇ Download for Windows</a>
+      <a class="btn" href="https://github.com/LuanDucate/Ducz.LocalConnect">★ Star on GitHub</a>
+    </div>
+    <div class="pill"><b>Free & open source</b> · MIT · Windows 10 / 11 · .NET 10 · self-hosted</div>
+
+    <div class="shot">
+      <img src="screenshots/session.png" alt="A live Ducz LocalConnect session controlling another PC over the LAN" />
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2 class="section-title">Everything you need on a LAN</h2>
+      <p class="section-sub">A fast, private alternative to cloud remote-desktop tools - for the machines already on your desk.</p>
+      <div class="grid">
+        <div class="card"><div class="ico">🖥️</div><h3>Screen &amp; audio</h3><p>Low-latency screen streaming with differential frames, plus the host's system audio on its own channel.</p></div>
+        <div class="card"><div class="ico">🖱️</div><h3>Full control</h3><p>Remote mouse and keyboard. In full screen, even the Windows key, Alt+Tab and Ctrl+Alt+Del go to the remote PC.</p></div>
+        <div class="card"><div class="ico">🗂️</div><h3>Clipboard &amp; files</h3><p>Send text both ways and drop files onto the host - no third-party service in between.</p></div>
+        <div class="card"><div class="ico">🔀</div><h3>Multiple sessions</h3><p>Connect to several computers at once. The one you're watching streams; the rest pause and resume instantly.</p></div>
+        <div class="card"><div class="ico">📌</div><h3>Pin &amp; reconnect</h3><p>Pin a computer to the sidebar for one-click reconnect. Pin by name and it survives an IP change.</p></div>
+        <div class="card"><div class="ico">🎚️</div><h3>Quality presets</h3><p>Sharp keeps text pixel-perfect on a wired LAN; Balanced suits Wi-Fi. Switch on the fly.</p></div>
+        <div class="card"><div class="ico">🔒</div><h3>PIN protected</h3><p>A PIN gates every session, one client at a time. Nothing is exposed to the internet.</p></div>
+        <div class="card"><div class="ico">🚀</div><h3>Start with Windows</h3><p>Optionally launch at login and start hosting automatically, tucked away in the notification area.</p></div>
+        <div class="card"><div class="ico">🌗</div><h3>Fluent UI</h3><p>A clean Windows 11-style interface with light and dark themes, Mica, and a native tray icon.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" style="background: linear-gradient(180deg, transparent, var(--bg-2) 40%, transparent);">
+    <div class="wrap">
+      <h2 class="section-title">See it in action</h2>
+      <p class="section-sub">One PC shares its screen; another connects with an address and a PIN.</p>
+      <div class="two">
+        <figure>
+          <img src="screenshots/host.png" alt="Host page - share this PC on the LAN" />
+          <figcaption><b>Host</b> - share this PC, set a PIN, start with Windows</figcaption>
+        </figure>
+        <figure>
+          <img src="screenshots/connect.png" alt="Connect page - reach another PC on the LAN" />
+          <figcaption><b>Connect</b> - reach another PC on your network</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="wrap">
+      <h2 class="section-title">Quick start</h2>
+      <p class="section-sub">Install it on both computers - no .NET runtime needed.</p>
+      <div class="steps">
+        <div class="step">
+          <h3><span class="badge">HOST</span> Share this computer</h3>
+          <ol>
+            <li>Open the <b>Host</b> page, keep port <code>5050</code>.</li>
+            <li>Note the <b>PIN</b> and click <b>Start host</b>.</li>
+            <li>Allow the app through the firewall (private networks).</li>
+            <li>Share one of the listed addresses and the PIN.</li>
+          </ol>
+        </div>
+        <div class="step">
+          <h3><span class="badge">CLIENT</span> Control it</h3>
+          <ol>
+            <li>Open <b>Connect</b>, enter the host's address, port and PIN.</li>
+            <li>Click <b>Connect</b> - you're looking at the remote screen.</li>
+            <li>Click the screen to control it; go full screen with F11.</li>
+            <li>Pin it so it's one click to reconnect next time.</li>
+          </ol>
+        </div>
+      </div>
+      <p class="note">Trusted-LAN tool: traffic is not encrypted and stays on your network - don't expose the ports to the internet.</p>
+      <div class="cta" style="margin-top:30px;">
+        <a class="btn primary" href="https://github.com/LuanDucate/Ducz.LocalConnect/releases/latest">⬇ Get the latest release</a>
+        <a class="btn" href="https://github.com/LuanDucate/Ducz.LocalConnect#readme">Read the docs</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="tags" aria-label="Related searches">
+        <span>AnyDesk alternative</span>
+        <span>TeamViewer alternative</span>
+        <span>RDP alternative</span>
+        <span>open-source remote desktop</span>
+        <span>self-hosted remote desktop</span>
+        <span>LAN remote control</span>
+        <span>screen sharing</span>
+        <span>remote support</span>
+        <span>Windows remote desktop</span>
+        <span>no cloud · no account</span>
+        <span>free remote desktop</span>
+        <span>.NET · WPF</span>
+      </div>
+      <div class="foot-row">
+        <div>© <span id="year">2026</span> Luan Michel Ducate · MIT License</div>
+        <div>
+          <a href="https://github.com/LuanDucate/Ducz.LocalConnect">GitHub</a> ·
+          <a href="https://github.com/LuanDucate/Ducz.LocalConnect/releases/latest">Releases</a> ·
+          <a href="https://github.com/LuanDucate">More projects</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
