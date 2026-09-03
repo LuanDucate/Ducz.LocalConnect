@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Ducz.LocalConnect.slnx
+
+      - name: Build (warnings are errors)
+        run: dotnet build Ducz.LocalConnect.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/Ducz.LocalConnect.Core.Tests/Ducz.LocalConnect.Core.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=results.trx" --blame-hang --blame-hang-timeout 2m
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore

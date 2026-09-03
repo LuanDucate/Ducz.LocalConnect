@@ -1,18 +1,21 @@
 param(
     [string]$Runtime = "win-x64",
     [string]$Configuration = "Release",
-    [string]$Version = "1.0.0"
+    [string]$Version = "1.0.1"
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$projectPath = Join-Path $repoRoot "Ducz.LocalConnect.App\Ducz.LocalConnect.App.csproj"
+$projectPath = Join-Path $repoRoot "src\Ducz.LocalConnect.App\Ducz.LocalConnect.App.csproj"
 $installerScript = Join-Path $repoRoot "installer\DuczLocalConnect.iss"
-$publishDir = Join-Path $repoRoot "Ducz.LocalConnect.App\bin\$Configuration\net10.0-windows\$Runtime\publish"
+$publishDir = Join-Path $repoRoot "src\Ducz.LocalConnect.App\bin\$Configuration\net10.0-windows\$Runtime\publish"
 
-Write-Host "Publishing Ducz LocalConnect..."
-dotnet publish $projectPath -c $Configuration -r $Runtime --self-contained true -p:Version=$Version
+Write-Host "Publishing Ducz LocalConnect $Version ($Configuration, $Runtime)..."
+dotnet publish $projectPath -c $Configuration -r $Runtime --self-contained true -p:Version=$Version -p:PublishReadyToRun=true
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet publish failed."
+}
 
 if (-not (Test-Path $publishDir)) {
     throw "Publish output not found at $publishDir"
@@ -30,5 +33,8 @@ if (-not $isccPath) {
 
 Write-Host "Building installer with Inno Setup..."
 & $isccPath "/DMyAppVersion=$Version" $installerScript
+if ($LASTEXITCODE -ne 0) {
+    throw "Inno Setup failed."
+}
 
-Write-Host "Installer created under the dist folder."
+Write-Host "Installer created: dist\DuczLocalConnect-Setup-$Version.exe"

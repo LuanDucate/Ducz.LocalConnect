@@ -1,0 +1,147 @@
+<ui:FluentWindow
+  x:Class="Ducz.LocalConnect.App.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  xmlns:views="clr-namespace:Ducz.LocalConnect.App.Views"
+  Title="Ducz LocalConnect"
+  Width="1180"
+  Height="780"
+  MinWidth="900"
+  MinHeight="620"
+  ExtendsContentIntoTitleBar="True"
+  WindowBackdropType="Mica"
+  WindowCornerPreference="Round"
+  WindowStartupLocation="CenterScreen">
+
+  <Grid>
+    <Grid x:Name="Chrome">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <ui:TitleBar x:Name="TitleBar" Grid.Row="0" Title="Ducz LocalConnect">
+        <ui:TitleBar.Icon>
+          <ui:ImageIcon Source="pack://application:,,,/Assets/logo.png" />
+        </ui:TitleBar.Icon>
+      </ui:TitleBar>
+
+      <ui:NavigationView
+        x:Name="Navigation"
+        Grid.Row="1"
+        IsBackButtonVisible="Collapsed"
+        IsPaneToggleVisible="True"
+        OpenPaneLength="200"
+        PaneDisplayMode="Left"
+        TransitionDuration="150">
+        <ui:NavigationView.MenuItems>
+          <ui:NavigationViewItem Content="Host" TargetPageTag="host" TargetPageType="{x:Type views:HostPage}">
+            <ui:NavigationViewItem.Icon>
+              <ui:SymbolIcon Symbol="ShareScreenStart24" />
+            </ui:NavigationViewItem.Icon>
+          </ui:NavigationViewItem>
+          <ui:NavigationViewItem Content="Connect" TargetPageTag="connect" TargetPageType="{x:Type views:ConnectPage}">
+            <ui:NavigationViewItem.Icon>
+              <ui:SymbolIcon Symbol="PlugConnected24" />
+            </ui:NavigationViewItem.Icon>
+          </ui:NavigationViewItem>
+        </ui:NavigationView.MenuItems>
+        <ui:NavigationView.FooterMenuItems>
+          <ui:NavigationViewItem Content="Settings" TargetPageTag="settings" TargetPageType="{x:Type views:SettingsPage}">
+            <ui:NavigationViewItem.Icon>
+              <ui:SymbolIcon Symbol="Settings24" />
+            </ui:NavigationViewItem.Icon>
+          </ui:NavigationViewItem>
+          <ui:NavigationViewItem Content="About" TargetPageTag="about" TargetPageType="{x:Type views:AboutPage}">
+            <ui:NavigationViewItem.Icon>
+              <ui:SymbolIcon Symbol="Info24" />
+            </ui:NavigationViewItem.Icon>
+          </ui:NavigationViewItem>
+        </ui:NavigationView.FooterMenuItems>
+      </ui:NavigationView>
+
+      <ui:SnackbarPresenter x:Name="SnackbarPresenter" Grid.Row="1" Margin="0,0,0,16" VerticalAlignment="Bottom" />
+    </Grid>
+
+    <Grid
+      x:Name="FullScreenHost"
+      Background="Black"
+      Visibility="Collapsed"
+      WindowChrome.IsHitTestVisibleInChrome="True">
+      <ContentControl x:Name="FullScreenContent" WindowChrome.IsHitTestVisibleInChrome="True" />
+
+      <Border
+        x:Name="TopHoverStrip"
+        Height="4"
+        VerticalAlignment="Top"
+        Background="Transparent"
+        WindowChrome.IsHitTestVisibleInChrome="True" />
+
+      <Border
+        x:Name="FullScreenBar"
+        Padding="10,6"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Top"
+        Background="{DynamicResource ApplicationBackgroundBrush}"
+        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+        BorderThickness="1,0,1,1"
+        CornerRadius="0,0,10,10"
+        Visibility="Collapsed"
+        WindowChrome.IsHitTestVisibleInChrome="True">
+        <StackPanel Orientation="Horizontal">
+          <StackPanel.Resources>
+            <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+              <Setter Property="Margin" Value="0,0,4,0" />
+            </Style>
+          </StackPanel.Resources>
+          <ComboBox
+            MinWidth="220"
+            Margin="0,0,8,0"
+            DisplayMemberPath="DisplayName"
+            ItemsSource="{Binding Monitors}"
+            SelectedItem="{Binding SelectedMonitor, Mode=TwoWay}"
+            ToolTip="Remote monitor" />
+          <ComboBox
+            MinWidth="110"
+            Margin="0,0,8,0"
+            ItemsSource="{Binding Qualities}"
+            SelectedItem="{Binding Quality, Mode=TwoWay}"
+            ToolTip="Picture quality" />
+          <ui:Button
+            Command="{Binding ToggleKeyboardCaptureCommand}"
+            Content="{Binding KeyboardCaptureText}"
+            Icon="{ui:SymbolIcon Keyboard24}"
+            ToolTip="Ctrl+Alt+Home" />
+          <ui:Button
+            Command="{Binding SendCtrlAltDelCommand}"
+            Content="Ctrl+Alt+Del"
+            Icon="{ui:SymbolIcon LockClosed24}" />
+          <ui:Button
+            Command="{Binding ToggleMuteCommand}"
+            Content="{Binding MuteText}"
+            Icon="{ui:SymbolIcon Speaker224}" />
+          <ui:Button
+            Command="{Binding ToggleFullScreenCommand}"
+            Content="Exit full screen"
+            Icon="{ui:SymbolIcon FullScreenMinimize24}"
+            ToolTip="F11" />
+          <ui:Button
+            Margin="4,0,0,0"
+            Appearance="Danger"
+            Command="{Binding DisconnectCommand}"
+            Content="Disconnect"
+            Icon="{ui:SymbolIcon PlugDisconnected24}" />
+          <TextBlock
+            Margin="12,0,4,0"
+            VerticalAlignment="Center"
+            FontSize="11"
+            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+            Text="Top edge for this bar · F11 exits · Ctrl+Alt+Home releases the keyboard" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <ContentPresenter x:Name="DialogHost" />
+  </Grid>
+</ui:FluentWindow>

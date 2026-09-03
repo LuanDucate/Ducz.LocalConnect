@@ -1,3 +1,22 @@
-.vs*
-bin*
-obj*
+# Build output
+bin/
+obj/
+publish/
+dist/
+
+# IDE / tooling
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+*.DotSettings.user
+
+# Test results
+TestResults/
+*.trx
+
+# OS
+Thumbs.db
+.DS_Store

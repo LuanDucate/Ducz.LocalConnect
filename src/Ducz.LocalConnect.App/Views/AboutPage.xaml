@@ -1,0 +1,65 @@
+<Page
+  x:Class="Ducz.LocalConnect.App.Views.AboutPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  xmlns:vm="clr-namespace:Ducz.LocalConnect.App.ViewModels"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  mc:Ignorable="d"
+  d:DataContext="{d:DesignInstance Type=vm:AboutViewModel}"
+  Title="About">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32,24,32,32" MaxWidth="720" HorizontalAlignment="Left">
+      <StackPanel Margin="0,8,0,24" Orientation="Horizontal">
+        <Image Width="96" Height="96" Source="pack://application:,,,/Assets/logo.png" />
+        <StackPanel Margin="20,0,0,0" VerticalAlignment="Center">
+          <TextBlock Style="{StaticResource PageTitle}" Text="Ducz LocalConnect" />
+          <TextBlock Style="{StaticResource PageSubtitle}" Margin="0,2,0,0">
+            <Run Text="Version" /> <Run Text="{Binding Version, Mode=OneWay}" />
+          </TextBlock>
+          <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" Text="{Binding RuntimeText, Mode=OneWay}" />
+        </StackPanel>
+      </StackPanel>
+
+      <ui:Card Style="{StaticResource SectionCard}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource SectionTitle}" Text="What it is" />
+          <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+            Remote desktop for two computers on the same local network: screen, audio, mouse, keyboard,
+            clipboard and file transfer, protected by a PIN. No account, no cloud, no relay servers -
+            traffic never leaves your LAN.
+          </TextBlock>
+          <TextBlock Margin="0,12,0,0" Style="{StaticResource Muted}" TextWrapping="Wrap">
+            Built with .NET, WPF and WPF UI. Licensed under MIT. The v2 rewrite moved the networking, capture
+            and audio into a testable core library and fixed the host-side freezes of v1.
+          </TextBlock>
+        </StackPanel>
+      </ui:Card>
+
+      <ui:Card Style="{StaticResource SectionCard}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource SectionTitle}" Text="Links" />
+          <StackPanel Orientation="Horizontal">
+            <ui:Button
+              Margin="0,0,8,0"
+              Appearance="Primary"
+              Command="{Binding OpenRepositoryCommand}"
+              Content="Source on GitHub"
+              Icon="{ui:SymbolIcon Code24}" />
+            <ui:Button
+              Margin="0,0,8,0"
+              Command="{Binding OpenIssuesCommand}"
+              Content="Report a problem"
+              Icon="{ui:SymbolIcon Bug24}" />
+            <ui:Button
+              Command="{Binding OpenAuthorCommand}"
+              Content="Luan Ducate"
+              Icon="{ui:SymbolIcon Person24}" />
+          </StackPanel>
+        </StackPanel>
+      </ui:Card>
+    </StackPanel>
+  </ScrollViewer>
+</Page>
